@@ -1,0 +1,156 @@
+* {
+    font-family: 'Arial';
+}
+body {
+  color: #ffffff;
+  background-color: #000000;
+  margin: 0px;
+  overflow: hidden;
+}
+#info {
+  position: absolute;
+  top: 0px;
+  width: 100%;
+  padding: 1em;
+  font-size: 0.8em;
+  text-align: center;
+  font-weight: bold;
+}
+a {
+  color: #fff;
+}
+nav.tools {
+    right:auto;
+    left:2em;
+}
+
+nav.tools i {
+  font-size: 12px;
+}
+
+nav {
+    position:fixed;
+    top:4em;
+    right:2em;
+    z-index:100;
+    border-radius:0.25em;
+    padding:0;
+}
+nav ul {
+    margin:0;
+    padding:0;
+}
+nav li {
+    list-style:none;
+}
+nav li:first-child a {
+    border-top-left-radius: 0.25em;
+    border-top-right-radius: 0.25em;
+}
+nav li:last-child a {
+    border-bottom-right-radius: 0.25em;
+    border-bottom-left-radius: 0.25em;
+}
+nav a.selected {
+    color:#FFF;
+    /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#1e5799+0,7db9e8+100 */
+    background: #1e5799; /* Old browsers */
+    background: -moz-linear-gradient(-45deg, #1e5799 0%, #7db9e8 100%); /* FF3.6-15 */
+    background: -webkit-linear-gradient(-45deg, #1e5799 0%,#7db9e8 100%); /* Chrome10-25,Safari5.1-6 */
+    background: linear-gradient(135deg, #1e5799 0%,#7db9e8 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#1e5799', endColorstr='#7db9e8',GradientType=1 ); /* IE6-9 fallback on horizontal gradient */
+}
+nav a {
+    cursor:pointer;
+    padding:0.75em 1em;
+    background-color:#222;
+    display:inline-block;
+    color:#999;
+    text-decoration:none;
+    font-size:0.85em;
+}
+nav a:hover {
+    background-color:#1c1c1c;
+    color:#FFF;
+}
+/*nav li + li {
+    border-top:1px solid #444;
+}*/
+
+#tools_wrapper {
+  overflow-y: scroll;
+  border-radius: 5px; 
+  background-color: rgba(10, 10, 10, .5);
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+
+  display:block;
+}
+#draw_bounding_box_reminder {
+  font-size: 12px;
+  position: fixed;
+    left: 10px;
+    bottom: 0;
+    width: 200px;
+    text-align: left;
+}
+
+#frames-table {
+  border-radius: 5px; 
+  background-color: rgba(60, 60, 60, 0.4);
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+}
+
+#frames-table div {
+  border-radius: 5px; 
+  background-color: rgba(80, 80, 80, 0.7);
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+  /*background-color: transparentize( white, 0.15 );*/
+}
+
+/* On mouse-over, add a deeper shadow */
+#frames-table div:hover {
+  cursor: pointer;
+  background-color: rgba(120, 120, 120, 1);
+}
+
+#frames-table div[selected] {
+  background-color: rgba(120, 120, 120, 1);
+}
+
+
+#object-table {
+  border-radius: 5px; 
+  background-color: rgba(60, 60, 60, 0.4);
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+}
+
+#object-table tbody .object_row {
+  border-radius: 5px; 
+  background-color: rgba(80, 80, 80, 0.7);
+  padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+}
+
+
+#footer {
+  font-size: 12px;
+  position: fixed;
+  right: 1rem;
+  bottom: 0;
+  width: 120px;
+  text-align: left;
+}
+
+#footer p {
+  size: 50%;
+}
+
+#object-table .object_row_id:hover {
+ cursor: pointer;
+  background-color: rgba(120, 120, 120, 1);
+}
+
+#object-table .object_row_id[selected] {
+  cursor: pointer;
+  background-color: rgba(120, 120, 120, 1);
+}
+

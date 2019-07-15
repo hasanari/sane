@@ -1,0 +1,45 @@
+body {  display: flex;  justify-content: center;  align-items: center;  min-height: 100vh;}
+
+.loading { 
+    max-width: 50%;
+    line-height: 1.4;
+    font-size: 1.2rem;
+    font-weight: bold;
+    text-align: center;
+    top: 600px;
+        padding: 16px;
+    position: absolute;
+
+}
+.loading__author {  font-weight: normal;  font-size: 0.9rem;  color: rgba(189,189,189 ,1);  margin: 0.6rem 0 2rem 0;  display: block;}
+.loading__anim {  width: 35px;  height: 35px;  display: inline-block;  border: 5px solid rgba(189,189,189 ,0.25);  border-left-color: rgba(3,155,229 ,1);  border-top-color: rgba(3,155,229 ,1); animation: rotate 600ms infinite linear;    border-radius: 50%; }
+
+@keyframes rotate { to {  transform: rotate(1turn) }}
+#info{
+    position: absolute;
+    top: 0px;
+    width: 100%;
+        padding: 18px;
+
+    font-size: 0.8em;
+    text-align: center;
+    font-weight: bold;
+    background-color: white;
+    color: black;
+    
+    min-height: 17px;
+}
+
+img.logo-data {
+    position: fixed;
+    width: 74px;
+    top: 1px;
+        right: 27px;
+}
+
+img.research-group-rotate{
+    position: fixed;
+    width: 228px;
+    top: 7px;
+    right: 157px;
+}

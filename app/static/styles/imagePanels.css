@@ -1,0 +1,141 @@
+/* DivTable.com */
+.divTable{
+    display: table;
+    width: 38%;
+    position: absolute;
+    top: 336px;
+    right: 20px;
+    font-size: 10px;
+}
+.valueCell{
+    width: 121px;
+}
+.divNameCell{
+    width: 95px;
+}
+.divTableRow {
+	display: table-row;
+}
+.divTableHeading {
+	background-color: #EEE;
+	display: table-header-group;
+}
+.divTableCell, .divTableHead {
+    border-bottom: 1px solid #999999;
+    display: table-cell;
+    padding: 1px 1px;
+    text-align: left;
+    background-color: transparent;
+    color: white;
+}
+.divTableHeading {
+	background-color: #EEE;
+	display: table-header-group;
+	font-weight: bold;
+}
+.divTableFoot {
+	background-color: #EEE;
+	display: table-footer-group;
+	font-weight: bold;
+}
+.divTableBody {
+	display: table-row-group;
+}
+
+
+
+.moveGUI{     
+    left: 0px;
+    top: -21px;
+    margin-bottom: 24px;
+}
+#footer-top-view {
+    font-size: 12px;
+    position: absolute;
+    /* right: 1rem; */
+    bottom: 46px;
+    display: None;
+    width: 120px;
+    text-align: left;
+    right: -19px;
+}
+
+#object-table{
+    display:block;
+    width: 280px;
+}
+#frames-table div {
+    width: 238px;
+    
+}
+#object-table tbody .select_row {
+    width: 220px;
+    padding: 5px;
+}
+#object-table tbody .select_row select {
+    width: 217px;
+}
+
+#tools_wrapper {
+    border-radius: 5px;
+    background-color: rgba(10, 10, 10, .5);
+    padding: 0.5rem 0.5rem 0.5rem 0.5rem;
+    display: block;
+    width: 304px;
+    font-size: 11px;
+    min-height: -webkit-fill-available;
+    overflow: hidden;
+}
+
+#panel, #flip {
+        width: 520px;
+    text-align: center;
+    background-color: #323232;
+    border: solid 1px #c3c3c3;
+}
+
+#panel {
+    display: none;
+    /*max-height: 15vh;*/
+}
+
+#panel img {
+	/*max-height:15vh;*/ 
+	height: auto;
+	object-fit: contain;
+}
+
+#panel2, #flip2 {
+        width: 520px;
+    text-align: center;
+    background-color: #323232;
+    border: solid 1px #c3c3c3;
+}
+
+#panel2 {
+    display: none;
+    max-height: 10vh;
+}
+
+#panel2 img {
+	/*max-height:10vh; */
+	height: auto;
+	object-fit: contain;
+}
+
+#panel3, #flip3 {
+        width: 520px;
+    text-align: center;
+    background-color: #323232;
+    border: solid 1px #c3c3c3;
+}
+
+#panel3 {
+    display: none;
+}
+
+#panel3 img {
+    
+	height: auto;
+	object-fit: contain;
+}
