@@ -57,37 +57,36 @@ var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Hasan
         var fname = app.cur_frame.fname;
         var framelist = Object.keys(app.frames);
 
+        
+        app.bbox_visualization_clearance();
         if(app.cur_frame){
         
-            var bboxes = app.cur_frame.bounding_boxes;
-            
-            for(var j=0; j < bboxes.length; j++){
-                
-                var box =  bboxes[j];
-                deleteRow(box.id);
-                box.text_label.element.remove();
-                scene.remove(box.points);
-                scene.remove(box.boxHelper);
+            for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
+                 box = app.cur_frame.bounding_boxes[i_box]
+                 delete_one_box(box);
 
-                
-                                  
-                
-                delete bboxes[j];
             }
+
+            updateAllObjectIds();
+
+            updateCountBBOX();
+
             app.cur_frame.bounding_boxes = [];
             delete app.cur_frame;
         }
         
+        
+        
         for(var i=0; i < framelist.length; i++){
             var bboxes = app.frames[framelist[i]].bounding_boxes;
             
-            for(var j=0; j < bboxes.length; j++){
+            
+            for (var j = bboxes.length - 1; j >= 0; j--) {
+                
                 
                 var box =  bboxes[j];
 
-                box.text_label.element.remove();
-                scene.remove(box.points);
-                scene.remove(box.boxHelper);
+ 
 
                 
                 delete bboxes[j];
@@ -256,7 +255,6 @@ visualizeFolder.add(settingsControls, 'PointSize').min(0.0).max(10.0).step(0.01)
 
 // gui.remember(SettingsControls);
 
-PointsFolder.open();
 settingsFolder.open();
 
 $(".property-name").each(function( index ) {

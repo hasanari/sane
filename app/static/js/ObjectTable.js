@@ -36,7 +36,7 @@ function updateCountBBOX(){
 function addObjectRow(box) {
     $("{0} tbody".format(OBJECT_TABLE)).append(
         "<tr><td class='id'><div class='object_row object_row_id'>{0}</td> \
-        <td><div class='object_row select_row'>{1}</div></td></tr>".format(box.id, options)
+        <td><div class='object_row select_row' id='parent-obj-id-{1}'>{2}</div></td></tr>".format(box.id, box.id, options)
     );
     if (box.object_id) {
         var row = getRow(box.id);
@@ -44,8 +44,20 @@ function addObjectRow(box) {
     }
     $("{0} tbody select".format(OBJECT_TABLE)).last().focus();
     updateCountBBOX();
-    
+
+
+    updateSelectOption(box);
 }
+
+function updateSelectOption(box){
+    if( box.islocked ){
+        $('#parent-obj-id-'+box.id).find("select").attr("disabled", "disabled");
+    }else{
+
+        $('#parent-obj-id-'+box.id).find("select").removeAttr("disabled");
+    }
+}
+
 
 $(FRAMES_TABLE).on("mousedown", "tbody tr", function() {
     var frameId = $(this).find('.fname').text();

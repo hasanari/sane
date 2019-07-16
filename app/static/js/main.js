@@ -256,28 +256,68 @@ function init() {
                  <div id="summary-object-isautogenrated" class="valueCell divTableCell">&nbsp;</div>
               </div>
 
-                <div style="position: absolute;right: -6px;top: 90px;font-size: 12px;cursor: move;">&nbsp;<input  id="summary-object-islocked" type="checkbox" name="summary-object-isvalidated-input" value="1"> Locked<br></div>
+                <div style="position: absolute;right: 7px;top: 90px;font-size: 12px;cursor: move;">&nbsp;<input  id="summary-object-islocked" type="checkbox" name="summary-object-isvalidated-input" value="1"> Locked<br></div>
+
+
+                <div id="recenter-objects" style="min-width: 62px; position: absolute;right: -6px;top: 111px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-dot-circle-o" aria-hidden="true"></i>&nbsp;&nbsp;Re-Center</a></div>
+
+
+                <div id="refresh-side-color" style="min-width: 62px; position: absolute;right: -6px;top: 139px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;&nbsp;Re-Colors</a></div>
+
+
            </div>
         </div>
     `);
 
     $("#summary-object-islocked").change(function(){
-        selectedBox.islocked = $("#summary-object-islocked").is(":checked");
-        app.bbox_visualization();
-        update_point_size();
+       
+        toggle_locked_box(selectedBox);
 
     });
     
+    $("#recenter-objects").click(function(){
+        app.forceVisualize = true;
+        app.bbox_visualization();
+        app.forceVisualize = false;
+    });
+    
+    $("#refresh-side-color").click(function(){
+
+        if(app.isRedColor == false){
+
+            for ( var i = 0;  i < app.annote_pointcloudXZ.geometry.vertices.length; i ++ ) {
+
+                 app.annote_pointcloudXZ.geometry.colors[i].setRGB(255,0,0);
+            }
+            
+            for (var j = 0; j < app.masked_indices.length; j++) {
+                 app.annote_pointcloudXZ.geometry.colors[app.masked_indices[j]] = new THREE.Color(0x00ff6b);
+            }
+            app.annote_pointcloudXZ.geometry.colorsNeedUpdate = true;
+            app.annote_pointcloudXZ.material.size =  settingsControls.PointSize+0.5; 
+            app.isRedColor = true;
+
+        }else{
+            //normalizeColors(app.cur_frame.data, null, app.annote_pointcloudXZ);
+
+            
+            app.forceVisualize = true;
+            app.bbox_visualization();
+            app.forceVisualize = false;
+            app.isRedColor = false;
+            
+        
+        }
+
+
+    });
 
     $("#summary-object-islocked").parent().click(function(){
     
         var current_check = $("#summary-object-islocked").is(":checked");
         $("#summary-object-islocked").prop('checked', !current_check);
 
-        
-        selectedBox.islocked = $("#summary-object-islocked").is(":checked");
-        app.bbox_visualization();
-        update_point_size();
+        toggle_locked_box(selectedBox);
     });
     
     // camera.rotateZ(3.14 * 0.5);
@@ -315,6 +355,18 @@ function init() {
     });
 
 }
+
+
+function toggle_locked_box(box){
+
+        box.islocked = $("#summary-object-islocked").is(":checked");
+        app.bbox_visualization();
+        update_point_size();
+    
+        updateSelectOption(box);
+      
+}
+
 
 function write_frame_out() {
     var FrameTracking = settingsControls["FrameTracking"];

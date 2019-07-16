@@ -7,6 +7,7 @@ function normalizeColors(vertices, color, pointcloud) {
     k = 0;
     var stride = 4;
     // finds max and min z coordinates
+    //console.log(maxColor,minColor);
     for ( var i = 0, l = vertices.length / DATA_STRIDE; i < l; i ++ ) {
         if (vertices[ DATA_STRIDE * k + 2] > maxColor) {
             maxColor = vertices[ DATA_STRIDE * k + 2];
@@ -17,6 +18,7 @@ function normalizeColors(vertices, color, pointcloud) {
         intensities.push(vertices[ DATA_STRIDE * k + 2]);
         k++;
     }
+    //console.log(maxColor,minColor);
 
     mean = calculateMean(intensities);
     sd = standardDeviation(intensities);

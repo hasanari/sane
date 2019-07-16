@@ -543,33 +543,8 @@ function deleteSelectedBox() {
     if (selectedBox && selectedBox.islocked==false) {
         
         app.bbox_visualization_clearance();
-        scene.remove(selectedBox.points);
-        scene.remove(selectedBox.boxHelper);
-        selectedBox.text_label.element.remove();
-
-        // deletes corresponding row in object id table
         
-        app.cur_frame.last_bbox_id = selectedBox.id;
-        deleteRow(selectedBox.id);
-
-        // removes selected box from array of currently hovered boxes
-        for (var i = 0; i < hoverBoxes.length; i++) {
-            if (hoverBoxes[i] == selectedBox) {
-                hoverBoxes.splice(i, 1);
-                break;
-            }
-        }
-
-        // removes selected box from array of bounding boxes
-        for (var i = 0; i < boundingBoxes.length; i++) {
-            if (boundingBoxes[i] == selectedBox) {
-                boundingBoxes.splice(i, 1);
-                break;
-            }
-        }
-        app.increment_delete_count();
-        // removes selected box
-        selectedBox = null;
+        delete_one_box(selectedBox);
         
         updateAllObjectIds();
     }
@@ -613,28 +588,7 @@ function deleteAllBoundingBox(delete_auto_generated_only){
         
             if(delete_auto_generated_only==false || box.is_auto_generated){
 
-                // Point is in bounding box
-                app.editing_box_id = false;
-
-
-                scene.remove(box.points);
-                scene.remove(box.boxHelper);
-                box.text_label.element.remove();
-
-                // deletes corresponding row in object id table
-                app.cur_frame.last_bbox_id = box.id;
-                deleteRow(box.id);
-
-                // removes selected box from array of currently hovered boxes
-                hoverBoxes.splice(i_box, 1);
-
-                // removes selected box from array of bounding boxes
-                app.cur_frame.bounding_boxes.splice(i_box, 1);
-
-
-                app.increment_delete_count();
-                // removes selected box
-                selectedBox = null;
+               delete_one_box(box);
             }
         }
 
@@ -644,6 +598,43 @@ function deleteAllBoundingBox(delete_auto_generated_only){
     
     updateCountBBOX();
     
+}
+
+function delete_one_box(box){
+    // Point is in bounding box
+    app.editing_box_id = false;
+
+
+    scene.remove(box.points);
+    scene.remove(box.boxHelper);
+    box.text_label.element.remove();
+
+    // deletes corresponding row in object id table
+    app.cur_frame.last_bbox_id = box.id;
+    deleteRow(box.id);
+    
+    
+    // removes selected box from array of currently hovered boxes
+    for (var i = 0; i < hoverBoxes.length; i++) {
+        if (hoverBoxes[i] == box) {
+            hoverBoxes.splice(i, 1);
+            break;
+        }
+    }
+
+    // removes selected box from array of bounding boxes
+    for (var i = 0; i <  app.cur_frame.bounding_boxes.length; i++) {
+        if ( app.cur_frame.bounding_boxes[i] == box) {
+             app.cur_frame.bounding_boxes.splice(i, 1);
+            break;
+        }
+    }
+
+
+    app.increment_delete_count();
+    // removes selected box
+    selectedBox = null;
+
 }
 
 

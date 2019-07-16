@@ -7,6 +7,9 @@ function App() {
     this.selectedBoxWidth=0;
     this.selectedBox;
     this.forceVisualize = false;
+    this.isRedColor = false;
+    this.annote_pointcloudXZ;
+    this.masked_indices;
     this.bboxObject;
     this.fnames = [];
     this.tempBBOX = [];
@@ -204,7 +207,9 @@ function App() {
             annote_pointcloudXZ.geometry.verticesNeedUpdate = true;
 
 
-
+            this.annote_pointcloudXZ = annote_pointcloudXZ;
+            this.masked_indices = masked_indices;
+            this.isRedColor = false; 
             var center = selectedBox.get_center();
 
             var bbox_max = selectedBox.geometry.vertices[0].clone();
