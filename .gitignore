@@ -1,3 +1,4 @@
 app/output/
 app/test_data/
-app/static/images
+app/static/images/
+app/PointCNN/output/
