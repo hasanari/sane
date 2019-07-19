@@ -188,13 +188,19 @@ function init() {
 
     document.getElementById('panel').addEventListener('keydown', onKeyDown2, false);
     document.getElementById('panel').addEventListener('keyup', onKeyUp2, false);
+    document.getElementById('panel').addEventListener('keypress', clickKeystrokeControl, false);
+
 
 
 
     document.getElementById('container').addEventListener('mousemove', onDocumentMouseMove, false);
     document.getElementById('container').addEventListener('mousedown', onDocumentMouseDown, false);
     document.getElementById('container').addEventListener('mouseup', onDocumentMouseUp, false);
+    document.getElementById('container').addEventListener('keypress', clickKeystrokeControl, false);
 
+    
+    
+    
 
 
 
@@ -207,6 +213,7 @@ function init() {
     
     document.addEventListener("keydown", onKeyDown2); //or however you are calling your method
     document.addEventListener("keyup", onKeyUp2);
+    document.addEventListener("keypress", clickKeystrokeControl, false);
     // document.getElementById( 'record' ).addEventListener( 'click', toggleRecord, false );
 
     window.onbeforeunload = function(evt) {
@@ -256,13 +263,13 @@ function init() {
                  <div id="summary-object-isautogenrated" class="valueCell divTableCell">&nbsp;</div>
               </div>
 
-                <div style="position: absolute;right: 7px;top: 90px;font-size: 12px;cursor: move;">&nbsp;<input  id="summary-object-islocked" type="checkbox" name="summary-object-isvalidated-input" value="1"> Locked<br></div>
+                <div style="position: absolute;right: 7px;top: 90px;font-size: 12px;cursor: move;">&nbsp;<input  id="summary-object-islocked" type="checkbox" name="summary-object-isvalidated-input" value="1"> (L)ocked<br></div>
 
 
-                <div id="recenter-objects" style="min-width: 62px; position: absolute;right: -6px;top: 111px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-dot-circle-o" aria-hidden="true"></i>&nbsp;&nbsp;Re-Center</a></div>
+                <div id="recenter-objects" style="min-width: 62px; position: absolute;right: -6px;top: 111px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-dot-circle-o" aria-hidden="true"></i>&nbsp;&nbsp;Re-Cen(T)er</a></div>
 
 
-                <div id="refresh-side-color" style="min-width: 62px; position: absolute;right: -6px;top: 139px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;&nbsp;Re-Colors</a></div>
+                <div id="refresh-side-color" style="min-width: 62px; position: absolute;right: -6px;top: 139px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;&nbsp;R(E)-Colors</a></div>
 
 
            </div>
@@ -276,38 +283,12 @@ function init() {
     });
     
     $("#recenter-objects").click(function(){
-        app.forceVisualize = true;
-        app.bbox_visualization();
-        app.forceVisualize = false;
+        recenter_objects();
     });
     
     $("#refresh-side-color").click(function(){
 
-        if(app.isRedColor == false){
-
-            for ( var i = 0;  i < app.annote_pointcloudXZ.geometry.vertices.length; i ++ ) {
-
-                 app.annote_pointcloudXZ.geometry.colors[i].setRGB(255,0,0);
-            }
-            
-            for (var j = 0; j < app.masked_indices.length; j++) {
-                 app.annote_pointcloudXZ.geometry.colors[app.masked_indices[j]] = new THREE.Color(0x00ff6b);
-            }
-            app.annote_pointcloudXZ.geometry.colorsNeedUpdate = true;
-            app.annote_pointcloudXZ.material.size =  settingsControls.PointSize+0.5; 
-            app.isRedColor = true;
-
-        }else{
-            //normalizeColors(app.cur_frame.data, null, app.annote_pointcloudXZ);
-
-            
-            app.forceVisualize = true;
-            app.bbox_visualization();
-            app.forceVisualize = false;
-            app.isRedColor = false;
-            
-        
-        }
+        toogle_color();
 
 
     });
@@ -356,6 +337,73 @@ function init() {
 
 }
 
+function recenter_objects(){
+
+        if(camera3.position.y < 6){
+           selectedBox.innerRotate( Math.PI);
+        }
+        
+        app.forceVisualize = true;
+        app.bbox_visualization();
+        app.forceVisualize = false;
+    
+
+}
+
+function toogle_color(){
+    
+        if(app.isRedColor){
+            recolor_evaluation();
+            app.isRedColor = false;
+
+        }else{
+            //normalizeColors(app.cur_frame.data, null, app.annote_pointcloudXZ);
+            app.isRedColor = true;
+            app.forceVisualize = true;
+            app.bbox_visualization();
+            app.forceVisualize = false;
+            
+        
+        }
+}
+
+function recolor_evaluation(){
+    
+    if(app.isRedColor && selectedBox){
+
+        app.forceVisualize = true;
+        app.bbox_visualization();
+        app.forceVisualize = false;
+        
+       for ( var i = 0;  i < app.annote_pointcloudXZ.geometry.vertices.length; i ++ ) {
+
+            var v =  app.annote_pointcloudXZ.geometry.vertices[i];
+            var v = new THREE.Vector3( v.x, 0, v.z);
+            if (v && containsPoint(app.selectedBox, v)) {
+                app.annote_pointcloudXZ.geometry.colors[i].setRGB(0,255,0);
+            }else{
+                app.annote_pointcloudXZ.geometry.colors[i].setRGB(255,0,0);
+            }
+
+        }
+       for ( var i = 0;  i < app.annote_pointcloudXZY.geometry.vertices.length; i ++ ) {
+
+            var v =  app.annote_pointcloudXZY.geometry.vertices[i];
+            var v = new THREE.Vector3( v.x, 0, v.z);
+            if (v && containsPoint(app.selectedBox, v)) {
+                app.annote_pointcloudXZY.geometry.colors[i].setRGB(0,255,0);
+            }else{
+                app.annote_pointcloudXZY.geometry.colors[i].setRGB(255,0,0);
+            }
+
+        }
+        app.annote_pointcloudXZ.geometry.colorsNeedUpdate = true;
+        app.annote_pointcloudXZ.material.size =  settingsControls.PointSize+0.5; 
+        app.annote_pointcloudXZY.geometry.colorsNeedUpdate = true;
+        app.annote_pointcloudXZY.material.size =  settingsControls.PointSize+0.5; 
+    }
+            
+}
 
 function toggle_locked_box(box){
 
@@ -364,6 +412,14 @@ function toggle_locked_box(box){
         update_point_size();
     
         updateSelectOption(box);
+    
+        if(box.islocked){
+            $("#summary-object-islocked").parent().css("color", "red");
+        }else{
+            $("#summary-object-islocked").parent().css("color", "white");
+        }
+        
+    
       
 }
 
@@ -502,6 +558,8 @@ function onDocumentMouseMove(event) {
 
             app.not_update_all_bbox = true;
             if (mouseDown && selectedBox.islocked==false) {
+                
+                
 
                 if (isRotatingTopView) {
 
@@ -563,6 +621,7 @@ function onDocumentMouseMove(event) {
 
                 }
 
+
                 app.bbox_visualization();
 
                 app.not_update_all_bbox = false;
@@ -576,6 +635,9 @@ function onDocumentMouseMove(event) {
                 app.not_update_all_bbox = false;
 
             }
+            
+            
+            
         }
 
 
@@ -836,6 +898,7 @@ function animate2() {
     requestAnimationFrame(animate2);
     render2();
     render3();
+   
     //stats.update();
     //stats3.update();
 

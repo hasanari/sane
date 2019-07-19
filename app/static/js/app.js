@@ -7,10 +7,13 @@ function App() {
     this.selectedBoxWidth=0;
     this.selectedBox;
     this.forceVisualize = false;
-    this.isRedColor = false;
+    this.isRedColor = true;
+    this.isLiveRecolors = false;
     this.annote_pointcloudXZ;
+    this.annote_pointcloudXZY;
     this.masked_indices;
     this.bboxObject;
+    this.opt_box;
     this.fnames = [];
     this.tempBBOX = [];
     this.not_update_all_bbox = false;
@@ -114,6 +117,8 @@ function App() {
 
 
         $("#footer-top-view").hide();
+        
+        
         if (selectedBox) {
 
             if (this.cur_frame) {
@@ -132,7 +137,11 @@ function App() {
             
             $("#summary-object-islocked").prop('checked', opt_box['islocked']);
             
-            
+            if( opt_box['islocked']){
+                $("#summary-object-islocked").parent().css("color", "red");
+            }else{
+                $("#summary-object-islocked").parent().css("color", "white");
+            }
 
             if (
                 this.forceVisualize == false && 
@@ -208,8 +217,8 @@ function App() {
 
 
             this.annote_pointcloudXZ = annote_pointcloudXZ;
+            this.annote_pointcloudXZY = annote_pointcloud;
             this.masked_indices = masked_indices;
-            this.isRedColor = false; 
             var center = selectedBox.get_center();
 
             var bbox_max = selectedBox.geometry.vertices[0].clone();
@@ -243,7 +252,7 @@ function App() {
             var bbox = new THREE.Box3();
             bbox.setFromCenterAndSize(new THREE.Vector3(0, bbox_min.y + car_height / 2, 0), new THREE.Vector3(opt_box.length, car_height, opt_box.width));
 
-
+            
             var mat4 = new THREE.Matrix4();
             mat4.extractRotation(annote_pointcloud.matrixWorld);
             bbox.applyMatrix4( mat4 );
@@ -259,6 +268,27 @@ function App() {
             }
 
 
+            
+            if(false && opt_box['islocked'] == false){  
+                var bbox3DotGeometry = new THREE.Geometry();
+
+                this.bbox3_min = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y, this.bboxObject.min.z);
+                this.bbox3_max = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y + car_height, this.bboxObject.min.z);
+
+                bbox3DotGeometry.vertices.push(this.bbox3_max);
+                bbox3DotGeometry.vertices.push( this.bbox3_min );
+
+                bbox3DotGeometry.vertices.push(new THREE.Vector3(0, bbox_min.y + car_height / 2, 0));
+
+                var dotMaterial = new THREE.PointsMaterial({
+                    size: 8,
+                    sizeAttenuation: false
+                });
+                var z_dot = new THREE.Points(bbox3DotGeometry, dotMaterial);
+                scene2.add(z_dot);
+
+            }
+            
             scene2.add(annote_pointcloud);
             scene2.add(helper);
 
@@ -279,8 +309,8 @@ function App() {
             }
             
              $("#panel2").show();
-            
 
+            
 
             if (this.not_update_all_bbox == false) {
 
@@ -350,6 +380,19 @@ function App() {
 
             
             var __width = Math.max(opt_box.width, opt_box.length);
+            
+            if( this.selectedBoxWidth != Math.round(__width/2 ) ){
+            
+                this.selectedBoxWidth = Math.round(__width/2 );
+
+                camera3.fov = 45 + 4 * (Math.abs(__width) / 2);
+                camera2.fov = camera3.fov+5;
+
+                camera3.updateProjectionMatrix();
+                camera2.updateProjectionMatrix();
+                
+            }
+            /*
 
             if( ( camera3.position.y <  6  ) &&  this.selectedBoxWidth  != Math.round( camera3.position.y /0.005 ) ){
                 
@@ -358,10 +401,16 @@ function App() {
                 camera3.position.x = 0;
                 camera3.position.z = 0;
             }
+            */
 
+            
             $("#panel3").show();
             $("#panel").show();
 
+                    
+            
+            app.isRedColor = true;
+            // recolor_evaluation();
         } else {
 
         }
@@ -385,9 +434,9 @@ function App() {
         
         
         console.log("fully_automated_bbox", fname);
-        $("#info").text("fully_automated_bbox...");
         $("#loading-screen").show();
         
+       $("#title-container").text("Generating fully automated prediction...");
         
         $.ajax({
             context: this,
@@ -451,7 +500,7 @@ function App() {
                 
                 $("#loading-screen").hide();
 
-                $("#info").text("");
+                $("#title-container").text("");
                 
                 this.bbox_visualization();
                 
@@ -465,7 +514,7 @@ function App() {
                 
                 $("#loading-screen").hide();
 
-                $("#info").text("");
+                $("#title-container").text("");
             }
         });
 
@@ -510,6 +559,8 @@ function App() {
             $("#container").show();
 
         } else {
+            
+            $("#title-container").text("Retreiving frame data...");
             $.ajax({
                 context: this,
                 url: '/getFramePointCloud',
@@ -538,7 +589,7 @@ function App() {
                         }
                     }
                     
-            
+                    $("#title-container").text("");
                     // this.delete_other_frames(fname);
                     this.frames[fname] = frame;
 
@@ -555,6 +606,8 @@ function App() {
 
                 },
                 error: function(error) {
+                    
+                    $("#title-container").text("");
                     console.log(error);
                 }
             });
@@ -588,6 +641,7 @@ function App() {
 
         if (!next_frame.annotated) {
             next_frame.annotated = true;
+            $("#title-container").text("Generating tracking prediction...");
             $.ajax({
                 context: this,
                 url: '/predictNextFrameBoundingBoxes',
@@ -641,10 +695,11 @@ function App() {
 
                     
                     this.fully_automated_bbox(fname);
-                    
+                    $("#title-container").text("");
                 },
                 error: function(error) {
                     console.log(error);
+                    $("#title-container").text("");
                 }
             });
         }
@@ -671,7 +726,7 @@ function App() {
             rotatingBox.add_timestamp();
 
             selectedBox = rotatingBox;
-
+            
         }
     }
 
@@ -694,6 +749,7 @@ function App() {
         selectedBox = resizeBox;
 
 
+        
         // console.log(resizeBox);
     }
 
@@ -702,6 +758,7 @@ function App() {
             selectedBox.translate(this.getCursor());
             selectedBox.changeBoundingBoxColor(selected_color.clone());
             selectedBox.add_timestamp();
+            
         }
     }
 
@@ -711,7 +768,7 @@ function App() {
 
             this.bbox_visualization_clearance();
 
-            $("#info").text("Calculating annotation...");
+            $("#title-container").text("Calculating annotation...");
             $("#loading-screen").show();
 
             var p = app.getCursor();
@@ -789,7 +846,7 @@ function App() {
 
                     $("#loading-screen").hide();
 
-                    $("#info").text("");
+                    $("#title-container").text("");
                     
                     autoDrawModeToggle(false);
                 },
@@ -802,7 +859,7 @@ function App() {
                     autoDrawModeToggle(false);
                     $("#loading-screen").hide();
 
-                    $("#info").text("");
+                    $("#title-container").text("");
                 }
             });
         }
@@ -839,6 +896,9 @@ function App() {
             this.cur_frame.evaluator.pause_recording();
             var output_frame = this.cur_frame.output();
 
+            
+           $("#title-container").text("Saving bounding boxes...");
+            
             var output = {
                 "frame": output_frame
             };
@@ -855,10 +915,15 @@ function App() {
                 type: 'POST',
                 contentType: 'application/json;charset=UTF-8',
                 success: function(response) {
-                    console.log("successfully saved output : ")
+                    console.log("successfully saved output : ");
+                    
+                   $("#title-container").text("");
                 },
                 error: function(error) {
                     console.log(error);
+                    
+            
+                   $("#title-container").text("");
                 }
             });
         }
@@ -915,6 +980,8 @@ function App() {
             return;
         }
         this.lock_frame = true;
+        
+        $("#title-container").text("Retreiving point annotation...");
         $.ajax({
             context: this,
             url: '/getMaskRCNNLabels',
@@ -949,7 +1016,7 @@ function App() {
 
                 }
                 */
-
+                $("#title-container").text("");
 
                 $("#loading-screen").hide();
                 $("#container").show();
@@ -959,7 +1026,7 @@ function App() {
                 console.log(error);
                 
                 
-                console.log("Failed to load point-wise label!");
+                $("#title-container").text("Failed to load point-wise label!");
                 $("#loading-screen").hide();
                 $("#container").show();
                 

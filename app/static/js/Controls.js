@@ -18,7 +18,7 @@ var SettingsControls = function() {
     this.AutoUpdate = true;
 
     this.SearchRange = 3.5;
-    this.NeighborsRadius = 4;
+    this.NeighborsRadius = 8;
 
     this.AnnotatorId = 'Guest';
     this.GroundRemoval = false;
@@ -133,9 +133,9 @@ settingsFolder.add(settingsControls, 'FullyAutomatedBbox').onChange(function() {
 
 
 settingsFolder.add(settingsControls, 'FittingCriterion', {
-    '(A) Area': 0,
-    '(C) Closeness': 1,
-    '(V) Variance': 3
+    '(A)rea': 0,
+    '(C)loseness': 1,
+    '(V)ariance': 3
 });
 
 
@@ -143,8 +143,8 @@ settingsFolder.add(settingsControls, 'FittingCriterion', {
 var PointsFolder = gui.addFolder('Points');
 
 PointsFolder.add(settingsControls, 'Clustering', {
-    '(D) DBSCAN': 'DBSCAN',
-    '(R) Region Growing': 'OriginAwareClustering'
+    '(D)BSCAN': 'DBSCAN',
+    '(R)egion Growing': 'OriginAwareClustering'
 }).onChange(function() {
     if (settingsControls["Clustering"] == "OriginAwareClustering") {
         $("#SearchRange").parent().parent().show();
@@ -255,6 +255,7 @@ visualizeFolder.add(settingsControls, 'PointSize').min(0.0).max(10.0).step(0.01)
 
 // gui.remember(SettingsControls);
 
+PointsFolder.open();
 settingsFolder.open();
 
 $(".property-name").each(function( index ) {
@@ -284,6 +285,26 @@ function toggleRecord() {
         controls.update();
     }
 }
+
+
+// controller for pressing hotkeys
+function clickKeystrokeControl(event) {
+
+        var KeyID = event.keyCode;
+        //console.log("KeyID", KeyID);
+        switch (KeyID) {
+      
+            case 68:
+            default:
+                break;
+        }
+
+
+
+}
+
+
+
 // controller for pressing hotkeys
 function onKeyDown2(event) {
     if (isRecording) {
@@ -313,6 +334,22 @@ function onKeyDown2(event) {
                 settingsControls.Clustering = "DBSCAN";
 
                 autoDrawModeToggle(false);
+                break;
+            case 69: // e key
+                //toogle_color();
+                break;
+                
+            case 76: // L key
+                
+                    if(selectedBox){
+
+                        var current_check = $("#summary-object-islocked").is(":checked");
+                        $("#summary-object-islocked").prop('checked', !current_check);
+
+                        toggle_locked_box(selectedBox);
+                    }
+
+
                 break;
 
             case 82: // r key
@@ -349,6 +386,8 @@ function onKeyUp2(event) {
 
     if (isRecording) {
         var KeyID = event.keyCode;
+        
+        //console.log("KeyID", KeyID);
         switch (KeyID) {
 
 
@@ -364,6 +403,14 @@ function onKeyUp2(event) {
                 //settingsControls.FittingCriterion=2;
                 //autoDrawModeToggle(false);
                 break;
+           case 69: // e key
+                toogle_color();
+                break;
+                
+           case 84: // t key
+                   recenter_objects();
+                break;
+                
             case 86: // v key
                 settingsControls.FittingCriterion = 3;
                 autoDrawModeToggle(false);
@@ -462,6 +509,15 @@ function toggleControl(b) {
     controls.enabled = b;
     controls.update();
     
+    
+    if(app.isRedColor == false){
+        app.forceVisualize = true;
+        app.bbox_visualization();
+        app.forceVisualize = false;
+        app.isRedColor = true;
+    }
+
+
 
     return;
     if (b) {

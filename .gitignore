@@ -1,4 +1,4 @@
 app/output/
-app/test_data/
+app/test_dataset/
 app/static/images/
 app/PointCNN/output/
