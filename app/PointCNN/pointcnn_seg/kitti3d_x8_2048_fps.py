@@ -63,7 +63,7 @@ optimizer = 'adam'
 epsilon = 1e-5
 
 data_dim = 4
-use_extra_features = True
+use_extra_features = False
 
 with_normal_feature = False
 with_X_transformation = True

@@ -17,7 +17,6 @@ import math
 
 from mask_rcnn import get_pointcnn_labels
 
-
 CAR_SHAPE = {
    # "suv" : {"width": 4.398504570721579, "length": 1.7581043589275447},
     "suv" : {"width": 3.45, "length": 1.77},
@@ -207,7 +206,7 @@ class BoundingBoxPredictor():
         prev_frame_bounding_boxes = {box.box_id:box for box in prev_frame.bounding_boxes}
         for i, box in enumerate(bounding_boxes):
             box_id = box.box_id
-            print(box_id)
+            #print(box_id)
             cur_center = box.center
 
             if box_id in prev_frame_bounding_boxes:
@@ -225,13 +224,13 @@ class BoundingBoxPredictor():
         
         
         drivename, fname = fname.split("/")
-        print(self.frame_handler.drives[drivename])
+
         idx = self.frame_handler.drives[drivename].index(fname)       
         
         ground_removed  = False
     
         car_points = get_pointcnn_labels(drivename+"/"+fname, json_request["settingsControls"], ground_removed=ground_removed)
-        
+
         pc = self.frame_handler.get_pointcloud(drivename, fname, dtype=float, ground_removed=ground_removed)
         
         points_class = pc[car_points]
@@ -290,7 +289,7 @@ class BoundingBoxPredictor():
         
     def predict_next_frame_bounding_boxes(self, frame, json_request):
         drivename, fname = frame.fname.split('.')[0].split("/")
-        print(self.frame_handler.drives[drivename])
+
         idx = self.frame_handler.drives[drivename].index(fname)
         next_fname = self.frame_handler.drives[drivename][idx+1]
 
@@ -298,7 +297,7 @@ class BoundingBoxPredictor():
         
         ground_removed  = json_request["settingsControls"]["GroundRemoval"]
         
-        print("ground_removed", ground_removed)
+        #print("ground_removed", ground_removed)
     
         car_points = get_pointcnn_labels(drivename+"/"+fname, json_request["settingsControls"], ground_removed=ground_removed)
         
@@ -318,8 +317,8 @@ class BoundingBoxPredictor():
         next_pc = next_pc[car_points]
         
         
-        print(fname, ground_removed)
-        print([box.box_id for box in frame.bounding_boxes])
+        #print(fname, ground_removed)
+        #print([box.box_id for box in frame.bounding_boxes])
         bounding_boxes = sorted(frame.bounding_boxes, 
                             key=lambda box:box.box_id)
         centers = {box.box_id:box.center for box in bounding_boxes}
@@ -332,7 +331,7 @@ class BoundingBoxPredictor():
         next_bounding_boxes = {}
         for bounding_box in bounding_boxes:
             try:
-                next_bounding_boxes[str(bounding_box.box_id)] = self._predict_next_frame_bounding_box(bounding_box, next_pc_small) 
+                next_bounding_boxes[str(bounding_box.box_id)] = self._predict_next_frame_bounding_box(frame, bounding_box, next_pc_small) 
             except:
                 pass
 
@@ -340,50 +339,68 @@ class BoundingBoxPredictor():
         #                         for bounding_box in bounding_boxes}
         return next_bounding_boxes
 
-    def _predict_next_frame_bounding_box(self, bounding_box, pc):
+    def _predict_next_frame_bounding_box(self, frame, bounding_box, pc):
         start = time.time()
-        without_cluster, cluster = bounding_box.filter_pointcloud(pc)
-        np.random.shuffle(cluster)
-        sample_indices = []
+        
+        """Pure state to state linear movement Kalman Filter"""
+        z_k = bounding_box.center
+        x_k =  bounding_box.predicted_state
+        P_k =  bounding_box.predicted_error
+      
+        if(np.sum(x_k[:2])== 0):
+            x_k[:2] = z_k
+            
+        H = frame.H_MATRIX
+        R = frame.R_MATRIX
 
+        y_k = z_k - np.matmul(H, x_k)
 
-        kd_tree = cKDTree(pc)
-        # for point in cluster:
-        #     dists, nn_indices = kd_tree.query(point, 1)
-        #     sample_indices.append(nn_indices)
-        point = np.mean(cluster, axis=0)
+        _temp = np.linalg.inv( R + np.matmul( np.matmul( H, P_k), np.transpose(H)) )
+        print("_temp", _temp)
+        K_k = np.matmul( np.matmul(P_k, np.transpose(H)), _temp)
 
-        #trim png
-        dists, ii = kd_tree.query(point, len(pc))
-        cutoff_idx = np.where(dists < 6)[0][-1]
-        pc_trimmed = pc[ii[:cutoff_idx]]
-        np.random.shuffle(pc_trimmed)
+        print("K_k", K_k, y_k, x_k)
+        bounding_box.predicted_state = x_k + np.matmul(K_k, y_k)
 
-        if pc_trimmed.shape[0] > 5000:
-            pc_trimmed = pc_trimmed[::4]
-        elif pc_trimmed.shape[0] > 2500:
-            pc_trimmed = pc_trimmed[::2]
+        print(bounding_box.predicted_state)
+        _temp =np.eye(6) - np.matmul(K_k, H)
+        
+        print()
+        bounding_box.predicted_error = np.matmul( np.matmul( _temp, P_k), np.transpose(_temp) ) + np.matmul( np.matmul(K_k, R),np.transpose(K_k) )
 
-        pc_trimmed = pc_trimmed[::2]
-        kd_tree = cKDTree(pc_trimmed)
+        
+        print("bounding_box.predicted_error", bounding_box.predicted_error)
+        # Update
+        
+        
+        center_old = bounding_box.center
+        x_hat = np.matmul(frame.F_MATRIX, bounding_box.predicted_state) 
 
-        # Create random starting points for clustering algorithm
-        # std = .3
-        # seeds = np.random.randn(100, 3) * std + point
-        # seeds = np.vstack((point, seeds))
-        # seeds = kd_tree.query(point, 50)
-
-        dists, sample_indices = kd_tree.query(point, 50)
-
-
-        # cluster_res = self.find_cluster(sample_indices, pc_trimmed, th_dist=.4, num_nn=20, num_samples=20)
-        # edges, corners = self.search_rectangle_fit(cluster_res['cluster'], variance_criterion)
-        res = self.predict_bounding_box(point, pc, bounding_box.settingsControls, num_seeds=5, plot=False)
+        predicted_error =  np.matmul( np.matmul(frame.F_MATRIX, bounding_box.predicted_error) , np.transpose(frame.F_MATRIX) ) + frame.Q_MATRIX
+        
+        bounding_box.center = x_hat[:2]
+        print("predicted_error", predicted_error, predicted_error.shape)
+        print("center_old", center_old, center_old.shape)
+        print("x_hat", bounding_box.center, x_hat.shape)
+        print("_predict_next_frame_bounding_box")
+        
+        corners = bounding_box.get_corners() 
+        print("corners", corners)
+        
+        #bounded_indices = bounding_box.filter_points(pc)
+        
+        new_bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, pc, False)
+        
+        new_bounding_box["predicted_error"] = np.diag(predicted_error).tolist()
+        new_bounding_box["predicted_state"] = x_hat.tolist()
+        
+        
+        print(new_bounding_box) 
         print("time to predict bounding box: ", time.time() - start)
-        # return self.corners_to_bounding_box(corners, context=bounding_box)
-        return res
-    
-    
+            
+        return new_bounding_box
+        
+  
     def calibrate_orientation(self, top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner):
 
         center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
@@ -657,10 +674,10 @@ class BoundingBoxPredictor():
             
             _dist = np.sqrt( _dist[:,0:1]* _dist[:,0:1] + _dist[:,1:2]*_dist[:,1:2] )
             
-            print(_dist)
+            #print(_dist)
             indices_check = _dist <= search_range
             
-            print(indices_check.shape, len(indices_check.nonzero()[0]), png.shape)
+            #print(indices_check.shape, len(indices_check.nonzero()[0]), png.shape)
             png_source = png[indices_check.nonzero()[0],:2]
             
 
@@ -703,7 +720,7 @@ class BoundingBoxPredictor():
                 
         l_np = np.asarray(point_max_storage).argmax()
         
-        print(point_max_storage)
+        #print(point_max_storage)
         
         corners =  np.array(bbox_storage[l_np][2])
         pointsInside = bbox_storage[l_np][1]

@@ -9,6 +9,10 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
     this.is_auto_generated =false;
     this.initialcursor=false;
     this.height = 0; // cursor
+    
+    this.predicted_state = [0, 0, 0, 0, 0, 0]; // x, y, , vx, vy, ax, ay
+    this.predicted_error =  [0, 0, 0, 0, 0, 0]; // x, y, , vx, vy, ax, ay
+    
     this.added = false; // (boolean) whether the box has been added to boundingboxes
     this.boundingBox = boundingBox; // Box3; sets the size of the box
     this.boxHelper = boxHelper; // BoxHelper; helps visualize the box
@@ -680,6 +684,8 @@ Box.parseJSON = function(json_boxes) {
             box.is_auto_generated = is_auto_generated;
             
             box.object_id =  json_box['object_id'];
+            box.predicted_state =  json_box['predicted_state'];
+            box.predicted_error =  json_box['predicted_error'];
             box.height =  json_box['height'];
             box.islocked = json_box['islocked'];
             box.timestamps = json_box["timestamps"];
@@ -725,4 +731,10 @@ function OutputBox(box) {
     this.object_id = box.object_id;
     this.settingsControls = box.settingsControls;
     this.timestamps = box.timestamps;
+    
+    this.predicted_error = box.predicted_error;
+    
+    var v_x = box.predicted_state[0]-center.z;
+    var v_y = box.predicted_state[1]-center.x;
+    this.predicted_state = [box.predicted_state[0], box.predicted_state[1], v_x, v_y, box.predicted_state[2] - v_x, box.predicted_state[3] - v_y ];
 }

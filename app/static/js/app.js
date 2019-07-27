@@ -51,6 +51,10 @@ function App() {
                 for (var i = 0; i < drive_keys.length; i++) {
                     var drive = drive_keys[i];
                     for (var j = 0; j < this.drives[drive].length; j++) {
+                        
+                        if(j > 100){
+                            break;
+                        }
                         var fname = pathJoin([drive, this.drives[drive][j].split('.')[0]]);
                         this.fnames.push(fname);
                         addFrameRow(fname);
@@ -652,6 +656,7 @@ function App() {
                 type: 'POST',
                 contentType: 'application/json;charset=UTF-8',
                 success: function(response) {
+                    console.log("response", response);
                     if( response == "error"){
                         
                         next_frame.annotated = false;
@@ -671,7 +676,9 @@ function App() {
                                 var box = createAndDrawBox(corner1,
                                     corner2,
                                     json_box['angle']);
-                                
+
+                                box.predicted_state =  json_box['predicted_state'];
+                                box.predicted_error =  json_box['predicted_error'];
                                  if( isOverlapWithLockedBBOX(box) ){
 
                                     app.cur_frame.last_bbox_id = box.id;
@@ -806,6 +813,9 @@ function App() {
 
                                     // Point is in bounding box
 
+                                    newbox.predicted_state = box.predicted_state;
+                                    newbox.predicted_error = box.predicted_error;
+                                    
                                     app.editing_box_id = false;
 
 
@@ -1031,8 +1041,8 @@ function App() {
                 $("#container").show();
                 
                 this.lock_frame = false;
-                // delete this.frames[fname];
-                this.set_frame(fname);
+                delete this.frames[fname];
+                //this.set_frame(fname);
             }
         });
     }

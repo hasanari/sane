@@ -30,7 +30,7 @@ def trackBoundingBox():
 	pointcloud = PointCloud.parse_json(json_request["pointcloud"], json_request["intensities"])
 	filtered_indices = tracker.filter_pointcloud(pointcloud)
 	next_bounding_boxes = tracker.predict_bounding_boxes(pointcloud)
-	print(next_bounding_boxes)
+	#print(next_bounding_boxes)
 	return str([filtered_indices, next_bounding_boxes])
 
 
@@ -98,7 +98,7 @@ def predictBoundingBox():
 	point = json_request["point"]
 	point = np.array([point['z'], point['x'], point['y']])
     
-	print("Points", point, json_request)
+	#'("Points", point, json_request)
 	ground_removed  = False
     
 	car_points = get_pointcnn_labels(json_request["fname"], json_request["settingsControls"], ground_removed=ground_removed)
@@ -121,7 +121,7 @@ def predictNextFrameBoundingBoxes():
 		keys = res.keys()
 		for key in keys:
 			res[str(key)] = res.pop(key)
-		print(res)
+		#print(res)
 		return str(res)
 
 
@@ -133,7 +133,7 @@ def fully_automated_bbox():
 	keys = res.keys()
 	for key in keys:
 		res[str(key)] = res.pop(key)
-	print(res)
+	#print(res)
 
 	return str(res)
 

@@ -19,8 +19,6 @@ class FrameHandler():
 				bin_dir = join(self.DATASET_DIR, drive, self.INPUT_BIN_DIR)
 				self.drives[drive] = []
 				for f in listdir(bin_dir):
-					if(len(self.drives[drive]) > 400 ):
-						break
 					if isfile(join(bin_dir, f)) and '.bin' in f:
 						self.drives[drive].append(f.split('.bin')[0])
 				self.drives[drive] = sorted(self.drives[drive])
@@ -47,6 +45,7 @@ class FrameHandler():
 		bin_dir = join(self.DATASET_DIR, drivename, self.INPUT_BIN_DIR)
 		filename = join(bin_dir, fname.split(".")[0] + ".bin")
 		data = np.fromfile(filename, dtype=np.float32)
+		data[ np.isnan( data) ] = .0
 		if ground_removed:
 			filename = join(self.DATASET_DIR, drivename, self.GROUND_REMOVED_DIR, fname.split(".")[0] + ".bin")
 			data = np.fromfile(filename, dtype=np.float32)	

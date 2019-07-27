@@ -2,9 +2,20 @@ import numpy as np
 
 
 class Frame():
-	def __init__(self, fname, bounding_boxes):
+	def __init__(self, fname, bounding_boxes, dt=0.1):
 		self.fname = fname
 		self.bounding_boxes = bounding_boxes
+		self.F_MATRIX =  np.array([[1, 0, dt, 0, 0.5*dt*dt, 0], 
+                        [0, 1, 0, dt, 0, 0.5*dt*dt],
+                         [0, 0, 1, 0, dt, 0],
+                         [0, 0, 0, 1, 0, dt],
+                         [0, 0, 0, 0, 1, 0],
+                         [0, 0, 0, 0, 0, 1]
+                        ])
+		self.Q_MATRIX = np.eye(6) * [0.1, 0.1, 1, 1, 10, 10]
+		self.R_MATRIX = np.eye(2) * [0.001, 0.001]
+		self.H_MATRIX =  np.array([[1, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0]])
+        
 
 	@staticmethod
 	def parse_json(json_frame):
@@ -13,7 +24,7 @@ class Frame():
 		return Frame(json_frame['frame']['fname'], bounding_boxes)
 
 class BoundingBox():
-	def __init__(self, box_id, center, width, length, angle, object_id, settingsControls):
+	def __init__(self, box_id, center, width, length, angle, object_id, predicted_state, predicted_error, settingsControls):
 		self.box_id = box_id
 		self.x = center['x']
 		self.y = center['y']
@@ -23,6 +34,8 @@ class BoundingBox():
 		self.angle = angle
 		self.settingsControls = settingsControls
 		self.object_id = object_id
+		self.predicted_error = np.eye(6) * np.array(predicted_error)
+		self.predicted_state = np.transpose( np.array(predicted_state) )
 
 	@staticmethod
 	def parse_json(json):
@@ -32,6 +45,8 @@ class BoundingBox():
 							json_obj['length'],
 							json_obj['angle'],
 							json_obj['object_id'],
+							json_obj['predicted_state'],
+							json_obj['predicted_error'],
 							json_obj['settingsControls'])
 							 for json_obj in json]
 

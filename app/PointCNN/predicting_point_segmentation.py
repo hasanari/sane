@@ -56,7 +56,7 @@ def data_preprocessing(drivename, fname , max_point_num, ground_removed, FLAGS):
     else:
         bin_name = os.path.join(DATA_DIR, drivename, "bin_data", fname) + ".bin"
     
-    print(ground_removed, bin_name)
+    #print(ground_removed, bin_name)
     
     data = np.zeros((batch_size, max_point_num, 4))
     data_num = np.zeros((batch_size), dtype=np.int32)
@@ -228,9 +228,9 @@ def main(FLAG):
     
     
     if(FLAGS.postfix == "denoise-weights"):
-        CHECKPOINT_LOCATION = "/home/mansur/projects/model/denoise-weight/0.83343285-iter--130000"
+        CHECKPOINT_LOCATION = "/home/mansur/projects/smart-annotation/pointcnn-models/denoise-weights/0.99289185-iter--180000"
     else: # (FLAGS.postfix == "normal-weights"):
-        CHECKPOINT_LOCATION = "/home/mansur/projects/model/normal-weight/0.9259112-iter--150000"
+        CHECKPOINT_LOCATION = "/home/mansur/projects/smart-annotation/pointcnn-models/normal-weights/normal.kitti-only"
     
     max_point_num = 8192
 
