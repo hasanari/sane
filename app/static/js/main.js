@@ -545,15 +545,25 @@ function onDocumentMouseMove(event) {
         return;
     }
 
+    
+    
     if (isInsideTheVisBox(event)) {
 
+        var cursor = getCurrentPositionCamera3();
+        changeCursor(isMovingTopView, cursor, app.selectedBox);
 
         if (!controls.enabled) {
 
 
             highlightCornersTopView();
 
-            var cursor = getCurrentPositionCamera3();
+            
+            if(isMovingTopView== false){
+                app.selectedBox.changeBoundingBoxColor(hover_color.clone());
+            }
+ 
+            
+            
             cursor.y -= app.eps;
 
             app.not_update_all_bbox = true;
@@ -595,16 +605,13 @@ function onDocumentMouseMove(event) {
 
 
 
-                } else if (isMovingTopView) {
+                } else if (isMovingTopView && selectedBox.initialcursor) {
 
-                    /*
-                            console.log("cursor", cursor);
+                  
                              
                             app.selectedBox.translate(cursor);
-                            app.selectedBox.changeBoundingBoxColor(selected_color.clone());
+                            app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
                             app.selectedBox.add_timestamp();
-                             
-                             
                              
 
                             var cursorMain = selectedBox.initialcursor.clone();
@@ -617,7 +624,9 @@ function onDocumentMouseMove(event) {
                             selectedBox.translate(cursorMain);
                             selectedBox.changeBoundingBoxColor(selected_color.clone());
                             selectedBox.add_timestamp();
-                            */
+                    
+                            
+                        
 
                 }
 
@@ -644,6 +653,7 @@ function onDocumentMouseMove(event) {
     } else {
 
 
+        $("body").css("cursor", "default");
         if(selectedBox && selectedBox.islocked==true){
             return;
         }
@@ -790,19 +800,32 @@ function onDocumentMouseDown(event) {
     if (isInsideTheVisBox(event)) {
         isFirstClickInsidetheVisBox = true;
     }
-
+    
+    
+    $("body").css("cursor", "default");
     if (!controls.enabled) {
         mouseDown = true;
 
         if (isInsideTheVisBox(event)) {
             isFirstClickInsidetheVisBox = true;
 
+            
             var pos = getCurrentPositionCamera3(); // get2DCoord();
 
+            
             app.selectedBox.changeBoundingBoxColor(0xffff00);
             var intersection = intersectionWithCornerTopView(app.selectedBox);
 
             app.selectedBox.changeBoundingBoxColor(0xffff00);
+
+            //console.log("onDocumentMouseDown", pos, containsPoint(app.selectedBox, pos), intersection);
+            
+
+            var FrameCursor = selectedBox.get_center().clone();
+            var mainFrameCursor = new THREE.Vector3(FrameCursor.y, 0.0001, FrameCursor.x);
+            
+            mainFrameCursor.x = mainFrameCursor.x + pos.x;
+            mainFrameCursor.z = mainFrameCursor.z + pos.z;
 
             if (intersection != null) {
                 var box = app.selectedBox; // intersection[0];
@@ -822,12 +845,18 @@ function onDocumentMouseDown(event) {
 
                 selectedBox.anchor = selectedBox.geometry.vertices[getOppositeCorner(closestIdx)].clone();
                 selectedBox.initialcursor = selectedBox.geometry.vertices[closestIdx].clone();
+                //selectedBox.initialcursor = mainFrameCursor.clone();
 
 
             } else if (pos && containsPoint(app.selectedBox, pos)) { // Is hovering
 
                 isMovingTopView = true;
-                app.selectedBox.changeBoundingBoxColor(hover_color.clone());
+                app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
+                app.selectedBox.cursor =  pos.clone();
+                
+                app.selectedBox.initialcursor =  pos.clone();
+                selectedBox.cursor = mainFrameCursor.clone();
+                selectedBox.initialcursor = mainFrameCursor.clone();
 
             } else if (pos && containsPoint(app.selectedBox, pos) == false) {
                 isMovingTopView = false;
@@ -995,6 +1024,7 @@ function update_footer_camera3() {
 }
 
 function update_footer(pos) {
+    
     var reminder_text = "";
     if (isRecording) {
         if (app.move2D) {

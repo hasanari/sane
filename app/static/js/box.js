@@ -464,10 +464,10 @@ function highlightCornersTopView() {
         
 }
     
-function changeCursor(intersection, cursor, box){
+function changeCursor(is_Moving, cursor, box){
 
 
-    if(intersection){
+    if(is_Moving == false){
         $("body").css("cursor", "default");
     }else if (cursor && containsPoint(box, cursor)) {
         

@@ -324,19 +324,44 @@ class BoundingBoxPredictor():
         centers = {box.box_id:box.center for box in bounding_boxes}
         velocities = {box_id:np.zeros(2) for box_id in centers.keys()}
         
+        """
         next_pc[:,2] = 0
         next_pc = next_pc[:,:3]
         np.random.shuffle(next_pc)
         next_pc_small = next_pc[::4]
+        
+        """
+        next_bounding_boxes_storage = {}
         next_bounding_boxes = {}
         for bounding_box in bounding_boxes:
             try:
-                next_bounding_boxes[str(bounding_box.box_id)] = self._predict_next_frame_bounding_box(frame, bounding_box, next_pc_small) 
+                new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc)) 
+                
+                next_bounding_boxes_storage[str(bounding_box.box_id)] = new_bbox
+                
+                kalman_state = new_bbox[0]
+                all_corners_set = new_bbox[1]
+                
+                c_key = sorted(all_corners_set.keys())[-1]
+                print("all_corners_set", all_corners_set[c_key])
+                
+                new_bounding_box, _, _ = self.corners_to_bounding_box(all_corners_set[c_key], np.copy(next_pc), False)
+        
+                new_bounding_box["predicted_state"] = kalman_state["predicted_state"] 
+                new_bounding_box["predicted_error"] = kalman_state["predicted_error"] 
+
+
+                next_bounding_boxes[str(bounding_box.box_id)] = new_bounding_box
+                print("next_bounding_boxes[str(bounding_box.box_id)]",new_bbox)
             except:
                 pass
 
+            
+        #kalman_state, all_corners_set
+
         # next_bounding_boxes = {str(bounding_box.box_id):self._predict_next_frame_bounding_box(bounding_box, next_pc_small) 
         #                         for bounding_box in bounding_boxes}
+        #return {}
         return next_bounding_boxes
 
     def _predict_next_frame_bounding_box(self, frame, bounding_box, pc):
@@ -389,18 +414,196 @@ class BoundingBoxPredictor():
         
         #bounded_indices = bounding_box.filter_points(pc)
         
-        new_bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, pc, False)
+        all_corners_set = {}
         
-        new_bounding_box["predicted_error"] = np.diag(predicted_error).tolist()
-        new_bounding_box["predicted_state"] = x_hat.tolist()
+        all_corners_set[-1] = corners
+        corners, all_corners_set = self.greedy_point_search(corners, pc, -1, all_corners_set)
+        #new_bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, pc, False)
         
-        
-        print(new_bounding_box) 
+        kalman_state = {}
+        kalman_state["predicted_error"] = np.diag(predicted_error).tolist()
+        kalman_state["predicted_state"] = x_hat.tolist()
+
         print("time to predict bounding box: ", time.time() - start)
             
-        return new_bounding_box
+        return kalman_state, all_corners_set
+        
+        
+    def greedy_point_search(self, corners, points, max_points, all_corners_set):
+        
+        pc = np.copy(points) #Backup original
+        
+        sorted_corners = sorted(corners, key=lambda x:x[1])
+        if sorted_corners[2][0] > sorted_corners[3][0]:
+            sorted_corners[2], sorted_corners[3] = sorted_corners[3], sorted_corners[2]
+        if sorted_corners[0][0] > sorted_corners[1][0]:
+            sorted_corners[0], sorted_corners[1] = sorted_corners[1], sorted_corners[0]
+
+        top_right_corner = sorted_corners[3]
+        top_left_corner = sorted_corners[2]
+        bottom_left_corner = sorted_corners[0]
+        bottom_right_corner = sorted_corners[1]
+        
+        top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner, center, w, l = self.calibrate_orientation( top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
+        
+        
+        print("-start", top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
+        
+        top_right_corner = top_right_corner - top_left_corner
+        angle = np.arctan2(top_right_corner[1], top_right_corner[0])
+        top_right_corner += top_left_corner
+        
         
   
+        _origin = top_left_corner
+
+        top_left_corner=top_left_corner-_origin
+        top_right_corner=top_right_corner-_origin
+        bottom_right_corner=bottom_right_corner-_origin
+        bottom_left_corner=bottom_left_corner-_origin
+
+
+        top_right_corner = top_right_corner - top_left_corner
+        angle = np.arctan2(top_right_corner[1], top_right_corner[0])
+        top_right_corner += top_left_corner
+
+
+
+        points[:,:2] = points[:,:2] - _origin
+
+        points[:,:2] = rotate_origin_only_bulk(points[:,:2], angle)
+
+
+        #plt.scatter(points[:,1], points[:,0], c='r', s=1)
+
+        #Rotate Point to Origin
+        new_top_left_corner = rotate_origin_only(top_left_corner, angle)
+        new_top_right_corner = rotate_origin_only(top_right_corner, angle)
+        new_bottom_right_corner = rotate_origin_only(bottom_right_corner, angle)
+        new_bottom_left_corner = rotate_origin_only(bottom_left_corner, angle)
+
+        new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l = self.calibrate_orientation( new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner)
+
+
+        #newline(top_left_corner,top_right_corner, 'g')
+        #newline(top_right_corner,bottom_right_corner, 'g')
+        #newline(bottom_right_corner,bottom_left_corner, 'g')
+        #newline(bottom_left_corner,top_left_corner, 'g')
+
+
+        #newline(new_top_left_corner,new_top_right_corner)
+        #newline(new_top_right_corner,new_bottom_right_corner)
+        #newline(new_bottom_right_corner,new_bottom_left_corner)
+        #newline(new_bottom_left_corner,new_top_left_corner)
+
+
+        #print("new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l")
+        #print(new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l)
+
+
+        search_number = 100
+
+        car_size = {"width": w, "length": l}
+
+
+        _data_check = []
+        print(car_size)
+        
+        ys = np.linspace(new_bottom_left_corner[1]-(car_size["length"]/10), new_top_left_corner[1]+(car_size["length"]/10), search_number)
+        xs = np.linspace(new_bottom_left_corner[0]-(car_size["width"]/10), new_bottom_right_corner[0]+(car_size["width"]/10), search_number)
+        
+        #print(ys)
+        #print(xs)
+        
+        
+        for _y in ys:
+            for _x in xs:
+
+
+                pointsInside = np.array(( 
+                points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
+                points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
+
+                pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
+
+                _data_check.append([_x, _y ,len(pointsInside)])
+
+
+
+                #top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -0)
+                #top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -0)
+                #bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -0)
+                #bottom_left_corner = rotate_origin_only([_x,_y], -0)
+
+
+                #newline(top_left_corner,top_right_corner, 'g')
+                #newline(top_right_corner,bottom_right_corner, 'g')
+                #newline(bottom_right_corner,bottom_left_corner, 'g')
+                #newline(bottom_left_corner,top_left_corner, 'g')
+
+
+        _data_check = np.array( _data_check )
+
+        _max = np.argmax(_data_check[:,2] )
+        
+        _number_of_points = _data_check[_max,2]
+        
+        print(_max, _data_check[_max,:]) #,  np.unique(_data_check[:,2], return_counts=True))
+        
+
+        _x, _y = _data_check[_max,:2]
+
+        pointsInside = np.array(( 
+        points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
+        points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
+
+        pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
+
+
+
+        #top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -0)
+        #top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -0)
+        #bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -0)
+        #bottom_left_corner = rotate_origin_only([_x,_y], -0)
+
+
+
+        #newline(top_left_corner,top_right_corner, 'r')
+        #newline(top_right_corner,bottom_right_corner, 'r')
+        #newline(bottom_right_corner,bottom_left_corner, 'r')
+        #newline(bottom_left_corner,top_left_corner, 'r')
+
+
+
+        top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -angle)
+        top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -angle)
+        bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -angle)
+        bottom_left_corner = rotate_origin_only([_x,_y], -angle)
+
+
+
+
+        top_left_corner=top_left_corner + _origin
+        top_right_corner=top_right_corner +_origin
+        bottom_right_corner=bottom_right_corner +_origin
+        bottom_left_corner=bottom_left_corner + _origin
+
+        corners= np.vstack([top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner])
+        
+        print("-last", top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
+        
+        all_corners_set[_number_of_points] = corners
+            
+        if(_number_of_points > max_points ):
+            
+            print("greedy_point_search", _number_of_points, corners.shape)
+            return self.greedy_point_search(corners, pc, _number_of_points, all_corners_set)
+        
+        return corners, all_corners_set
+           
+           
+   
+            
     def calibrate_orientation(self, top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner):
 
         center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
@@ -436,140 +639,7 @@ class BoundingBoxPredictor():
         top_right_corner += top_left_corner
         
         pointsInside = []
-        
-        if (is_shape_fitting_required):
 
-            _origin = top_left_corner
-
-            top_left_corner=top_left_corner-_origin
-            top_right_corner=top_right_corner-_origin
-            bottom_right_corner=bottom_right_corner-_origin
-            bottom_left_corner=bottom_left_corner-_origin
-
-
-            top_right_corner = top_right_corner - top_left_corner
-            angle = np.arctan2(top_right_corner[1], top_right_corner[0])
-            top_right_corner += top_left_corner
-
-
-
-            points[:,:2] = points[:,:2] - _origin
-
-            points[:,:2] = rotate_origin_only_bulk(points[:,:2], angle)
-
-
-            #plt.scatter(points[:,1], points[:,0], c='r', s=1)
-
-            #Rotate Point to Origin
-            new_top_left_corner = rotate_origin_only(top_left_corner, angle)
-            new_top_right_corner = rotate_origin_only(top_right_corner, angle)
-            new_bottom_right_corner = rotate_origin_only(bottom_right_corner, angle)
-            new_bottom_left_corner = rotate_origin_only(bottom_left_corner, angle)
-
-            new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l = self.calibrate_orientation( new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner)
-
-
-            #newline(top_left_corner,top_right_corner, 'g')
-            #newline(top_right_corner,bottom_right_corner, 'g')
-            #newline(bottom_right_corner,bottom_left_corner, 'g')
-            #newline(bottom_left_corner,top_left_corner, 'g')
-
-
-            #newline(new_top_left_corner,new_top_right_corner)
-            #newline(new_top_right_corner,new_bottom_right_corner)
-            #newline(new_bottom_right_corner,new_bottom_left_corner)
-            #newline(new_bottom_left_corner,new_top_left_corner)
-
-
-            #print("new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l")
-            #print(new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l)
-
-
-            search_number = 10
-
-            car_size = CAR_SHAPE["suv"]
-
-
-            _data_check = []
-            for _y in np.linspace(new_bottom_left_corner[1], new_top_left_corner[1]-car_size["length"], search_number):
-                for _x in np.linspace(new_bottom_left_corner[0], new_bottom_right_corner[0]-car_size["width"], search_number):
-
-
-                    pointsInside = np.array(( 
-                    points[:, 0] >= _x ,  points[:, 1] <= _x +car_size["width"] ,
-                    points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
-
-                    pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
-
-                    _data_check.append([_x, _y ,len(pointsInside)])
-
-
-
-                    #top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -0)
-                    #top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -0)
-                    #bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -0)
-                    #bottom_left_corner = rotate_origin_only([_x,_y], -0)
-
-
-                    #newline(top_left_corner,top_right_corner, 'g')
-                    #newline(top_right_corner,bottom_right_corner, 'g')
-                    #newline(bottom_right_corner,bottom_left_corner, 'g')
-                    #newline(bottom_left_corner,top_left_corner, 'g')
-
-
-            _data_check = np.array( _data_check )
-
-            #print(_data_check)
-
-            _max = np.argmax(_data_check[:,2] )
-
-            _x, _y = _data_check[_max,:2]
-
-            pointsInside = np.array(( 
-            points[:, 0] >= _x ,  points[:, 1] <= _x +car_size["width"] ,
-            points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
-
-            pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
-
-
-
-            #top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -0)
-            #top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -0)
-            #bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -0)
-            #bottom_left_corner = rotate_origin_only([_x,_y], -0)
-
-
-
-            #newline(top_left_corner,top_right_corner, 'r')
-            #newline(top_right_corner,bottom_right_corner, 'r')
-            #newline(bottom_right_corner,bottom_left_corner, 'r')
-            #newline(bottom_left_corner,top_left_corner, 'r')
-
-
-
-            top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -angle)
-            top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -angle)
-            bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -angle)
-            bottom_left_corner = rotate_origin_only([_x,_y], -angle)
-
-
-
-
-            top_left_corner=top_left_corner + _origin
-            top_right_corner=top_right_corner +_origin
-            bottom_right_corner=bottom_right_corner +_origin
-            bottom_left_corner=bottom_left_corner + _origin
-
-            top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner, center, w, l = self.calibrate_orientation( top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
-
-
-            newline(top_left_corner,top_right_corner, 'r')
-            newline(top_right_corner,bottom_right_corner, 'r')
-            newline(bottom_right_corner,bottom_left_corner, 'r')
-            newline(bottom_left_corner,top_left_corner, 'r')
-
-
-            #print("pointsInside", len(pointsInside) )
         
         
         if context:

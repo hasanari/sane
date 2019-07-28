@@ -228,9 +228,9 @@ def main(FLAG):
     
     
     if(FLAGS.postfix == "denoise-weights"):
-        CHECKPOINT_LOCATION = "/home/mansur/projects/smart-annotation/pointcnn-models/denoise-weights/0.99289185-iter--180000"
+        CHECKPOINT_LOCATION = "/home/mansur/projects/smart-annotation/pointcnn-models/kitti-only/denoise/0.99273694-iter--246000"
     else: # (FLAGS.postfix == "normal-weights"):
-        CHECKPOINT_LOCATION = "/home/mansur/projects/smart-annotation/pointcnn-models/normal-weights/normal.kitti-only"
+        CHECKPOINT_LOCATION = "/home/mansur/projects/smart-annotation/pointcnn-models/kitti-only/normal/0.98931193-iter--143000"
     
     max_point_num = 8192
 

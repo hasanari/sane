@@ -600,12 +600,10 @@ function App() {
               
                     
                     this.get_Mask_RCNN_Labels(fname);
-                    this.predict_next_frame_bounding_box(this.get_prev_fname(fname));
                     
                     
                     show(frame);
 
-                    this.fully_automated_bbox(fname);
 
 
                 },
@@ -621,6 +619,8 @@ function App() {
 
     this.predict_next_frame_bounding_box = function(fname) {
         if (!enable_bounding_box_tracking) { 
+            $("#loading-screen").hide();
+            $("#container").show();
             return;
         }
         var cur_idx = this.fnames.indexOf(fname);
@@ -631,10 +631,16 @@ function App() {
             !this.frames[this.fnames[cur_idx]].is_annotated()) {
             
             console.log("annotated: ", cur_idx,  this.fnames.length);
+            
+            $("#loading-screen").hide();
+            $("#container").show();
             return;
         }
         if (this.fnames[cur_idx].split("/")[0] != this.fnames[cur_idx + 1].split("/")[0]) {
             console.log(this.fnames[cur_idx].split("/")[0], this.fnames[cur_idx+1].split("/")[0]);
+            
+            $("#loading-screen").hide();
+            $("#container").show();
             return;
         }
 
@@ -643,6 +649,10 @@ function App() {
         var next_frame = this.frames[this.fnames[cur_idx + 1]];
         //console.log("predict_next_frame_bounding_box is_annotated", next_frame.is_annotated());
 
+        
+        $("#loading-screen").show();
+        $("#container").hide(); 
+        
         if (!next_frame.annotated) {
             next_frame.annotated = true;
             $("#title-container").text("Generating tracking prediction...");
@@ -656,6 +666,8 @@ function App() {
                 type: 'POST',
                 contentType: 'application/json;charset=UTF-8',
                 success: function(response) {
+                    
+                    $("#title-container").text("Writing  prediction...");
                     console.log("response", response);
                     if( response == "error"){
                         
@@ -701,14 +713,25 @@ function App() {
                     }
 
                     
-                    this.fully_automated_bbox(fname);
                     $("#title-container").text("");
+                    this.fully_automated_bbox(fname);
+                    
+                    
+                    $("#loading-screen").hide();
+                    $("#container").show();
+
                 },
                 error: function(error) {
                     console.log(error);
                     $("#title-container").text("");
                 }
             });
+        }else{
+            
+            $("#loading-screen").hide();
+            $("#container").show();
+            $("#title-container").text("");
+            this.fully_automated_bbox(fname);
         }
     };
 
@@ -799,6 +822,10 @@ function App() {
                     var newbox = createAndDrawBox(corner1,
                         corner2,
                         res['angle']);
+                    
+                    if(newbox == null || newbox.boundingBox == false){
+                        return false;
+                    }
 
                     if (settingsControls.AutoDeleteExistingBbox) {
                         //console.log("number of bboxes", app.cur_frame.bounding_boxes.length)
@@ -813,6 +840,7 @@ function App() {
 
                                     // Point is in bounding box
 
+                                    var old_id =  box.id;
                                     newbox.predicted_state = box.predicted_state;
                                     newbox.predicted_error = box.predicted_error;
                                     
@@ -822,7 +850,7 @@ function App() {
                                     scene.remove(box.points);
                                     scene.remove(box.boxHelper);
 
-                                    app.cur_frame.last_bbox_id = box.id;
+                                    //app.cur_frame.last_bbox_id = box.id;
                                     box.text_label.element.remove();
 
                                     // deletes corresponding row in object id table
@@ -838,8 +866,10 @@ function App() {
                                     app.increment_delete_count();
                                     // removes selected box
                                     selectedBox = null;
-
-
+                                    
+                                    
+                                    // Update box id
+                                    newbox.id = old_id;
                                 } 
                             }
 
@@ -987,6 +1017,8 @@ function App() {
 
     this.get_Mask_RCNN_Labels = function(fname) {
         if (!enable_mask_rcnn || this.frames[fname].mask_rcnn_indices.length > 0) {
+            
+            
             return;
         }
         this.lock_frame = true;
@@ -1010,26 +1042,11 @@ function App() {
                 highlightPoints(maskRCNNIndices);
                 updateMaskRCNNImagePanel();
                 this.lock_frame = false;
-
-                /*
-                backupBBOX = this.tempBBOX;
-                for (var i = 0; i < backupBBOX.length; i++) {
-                    var boxreturn = backupBBOX[i];
-
-
-                    var box = createAndDrawBox(boxreturn.anchor,
-                        boxreturn.cursor,
-                        boxreturn.angle);
-                    addBox(box);
-                    box.add_text_label();
-                    this.frames[fname].annotated = true;
-
-                }
-                */
+                
                 $("#title-container").text("");
-
-                $("#loading-screen").hide();
-                $("#container").show();
+                
+                this.predict_next_frame_bounding_box(this.get_prev_fname(fname));
+                
 
             },
             error: function(error) {
