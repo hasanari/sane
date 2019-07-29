@@ -10,7 +10,7 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
     this.initialcursor=false;
     this.height = 0; // cursor
     
-    this.predicted_state = [0, 0, 0, 0, 0, 0]; // x, y, , vx, vy, ax, ay
+    this.predicted_state = [0, 0, 1, 1, 1, 1]; // x, y, , vx, vy, ax, ay
     this.predicted_error =  [0, 0, 0, 0, 0, 0]; // x, y, , vx, vy, ax, ay
     
     this.added = false; // (boolean) whether the box has been added to boundingboxes
@@ -544,7 +544,7 @@ function deleteSelectedBox() {
             
     if (app.editing_box_id) {return;}
     var boundingBoxes = app.cur_frame.bounding_boxes;
-    if (selectedBox && selectedBox.islocked==false) {
+    if (selectedBox && selectedBox.islocked==false && mouseEvent == "up") {
         
         app.bbox_visualization_clearance();
         

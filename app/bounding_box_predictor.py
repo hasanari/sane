@@ -170,6 +170,10 @@ def rotate_origin_only_bulk(xy, radians):
 
     return np.array([xx, yy]).transpose()
 
+def range_overlap(a_min, a_max, b_min, b_max):
+    '''Neither range is completely greater than the other
+    '''
+    return (a_min <= b_max) and (b_min <= a_max)
 
         
 class BoundingBoxPredictor():
@@ -343,10 +347,11 @@ class BoundingBoxPredictor():
                 all_corners_set = new_bbox[1]
                 
                 c_key = sorted(all_corners_set.keys())[-1]
-                print("all_corners_set", all_corners_set[c_key])
+                print("all_corners_set",  all_corners_set[c_key])
                 
-                new_bounding_box, _, _ = self.corners_to_bounding_box(all_corners_set[c_key], np.copy(next_pc), False)
-        
+                new_bounding_box, _, _ = self.corners_to_bounding_box(all_corners_set[c_key][0], np.copy(next_pc), False)
+                #new_bounding_box["corners"] = all_corners_set[c_key][0]
+                new_bounding_box["center_dist"] = all_corners_set[c_key][1]
                 new_bounding_box["predicted_state"] = kalman_state["predicted_state"] 
                 new_bounding_box["predicted_error"] = kalman_state["predicted_error"] 
 
@@ -357,13 +362,53 @@ class BoundingBoxPredictor():
                 pass
 
             
+        #Clean overlapping boxes
+        
+        
         #kalman_state, all_corners_set
 
         # next_bounding_boxes = {str(bounding_box.box_id):self._predict_next_frame_bounding_box(bounding_box, next_pc_small) 
         #                         for bounding_box in bounding_boxes}
         #return {}
         return next_bounding_boxes
+    
+    
+    #https://codereview.stackexchange.com/questions/31352/overlapping-rectangles
+    def overlap(self, corners_new, corners):
+        '''Overlapping rectangles overlap both horizontally & vertically
+        '''
+        
+        r1 = {'left': np.min(corners[:,0]), 'right': np.max(corners[:,0]), 'bottom': np.min(corners[:,1]), 'top': np.max(corners[:,1]) }
+        r2 = {'left': np.min(corners_new[:,0]), 'right': np.max(corners_new[:,0]), 'bottom': np.min(corners_new[:,1]), 'top': np.max(corners_new[:,1]) }
+        
+        return range_overlap(r1.left, r1.right, r2.left, r2.right) and range_overlap(r1.bottom, r1.top, r2.bottom, r2.top)
 
+
+
+    
+    def fixed_overlapping_boxes(self, new_bounding_boxes, check_box, next_bounding_boxes_storage):
+        
+        corners_new = check_box["corners"]
+        
+        box_keys = sorted(new_bounding_boxes.keys())
+        
+        for key in box_keys:
+            
+            bounding_box = new_bounding_boxes[key]
+        
+            corners = bounding_box["corners"]
+            """
+            if(self.overlap(corners_new, corners)): #Boxes Overlap, reorder
+                #Check Center Box to Predict Center (kalmanx_hat )
+                if(check_box["center_dist"] > bounding_box["center_dist"] ):
+                    #check_box go to previous
+                    
+                else:
+                
+            """
+        
+        
+        
     def _predict_next_frame_bounding_box(self, frame, bounding_box, pc):
         start = time.time()
         
@@ -416,8 +461,8 @@ class BoundingBoxPredictor():
         
         all_corners_set = {}
         
-        all_corners_set[-1] = corners
-        corners, all_corners_set = self.greedy_point_search(corners, pc, -1, all_corners_set)
+        all_corners_set[-1] = [corners, 0.0]
+        corners, all_corners_set = self.greedy_point_search(corners, pc, -1, all_corners_set, bounding_box.center)
         #new_bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, pc, False)
         
         kalman_state = {}
@@ -429,7 +474,7 @@ class BoundingBoxPredictor():
         return kalman_state, all_corners_set
         
         
-    def greedy_point_search(self, corners, points, max_points, all_corners_set):
+    def greedy_point_search(self, corners, points, max_points, all_corners_set, center_predict):
         
         pc = np.copy(points) #Backup original
         
@@ -509,8 +554,8 @@ class BoundingBoxPredictor():
         _data_check = []
         print(car_size)
         
-        ys = np.linspace(new_bottom_left_corner[1]-(car_size["length"]/10), new_top_left_corner[1]+(car_size["length"]/10), search_number)
-        xs = np.linspace(new_bottom_left_corner[0]-(car_size["width"]/10), new_bottom_right_corner[0]+(car_size["width"]/10), search_number)
+        ys = np.linspace(new_bottom_left_corner[1]-(car_size["length"]/5), new_top_left_corner[1]+(car_size["length"]/5), search_number)
+        xs = np.linspace(new_bottom_left_corner[0]-(car_size["width"]/5), new_bottom_right_corner[0]+(car_size["width"]/5), search_number)
         
         #print(ys)
         #print(xs)
@@ -550,6 +595,7 @@ class BoundingBoxPredictor():
         
         print(_max, _data_check[_max,:]) #,  np.unique(_data_check[:,2], return_counts=True))
         
+        print("_data_check", _data_check)
 
         _x, _y = _data_check[_max,:2]
 
@@ -592,12 +638,15 @@ class BoundingBoxPredictor():
         
         print("-last", top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
         
-        all_corners_set[_number_of_points] = corners
+        center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
+        
+        dist = np.sqrt( np.sum( np.square( center - center_predict ) ))
+        all_corners_set[_number_of_points] = [corners, dist]
             
         if(_number_of_points > max_points ):
             
             print("greedy_point_search", _number_of_points, corners.shape)
-            return self.greedy_point_search(corners, pc, _number_of_points, all_corners_set)
+            return self.greedy_point_search(corners, pc, _number_of_points, all_corners_set, center_predict)
         
         return corners, all_corners_set
            
@@ -751,6 +800,9 @@ class BoundingBoxPredictor():
             png_source = png[indices_check.nonzero()[0],:2]
             
 
+        if(png_source.shape[0] < 4):
+            return ""
+        
         print(pc.shape, png.shape, png_source.shape)
      
         bbox_storage = []

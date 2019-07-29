@@ -5,6 +5,7 @@ var mouse2D = new THREE.Vector2();
 var mouse2DTopView = new THREE.Vector2();
 var intersection = null;
 var mouseDown;
+var mouseEvent="up";
 var highlightMode = false;
 var threshold = 0.5,
     pointSize = 1;
@@ -230,10 +231,6 @@ function init() {
 
            <div class="divTableBody">
 
-              <div class="divTableRow">
-                 <div class="divTableCell divNameCell">&nbsp;Object ID</div>
-                 <div id="summary-object-id" class="valueCell divTableCell">&nbsp;</div>
-              </div>
 
               <div class="divTableRow">
                  <div class="divTableCell divNameCell">&nbsp;Object Type</div>
@@ -263,14 +260,18 @@ function init() {
                  <div id="summary-object-isautogenrated" class="valueCell divTableCell">&nbsp;</div>
               </div>
 
-                <div style="position: absolute;right: 7px;top: 90px;font-size: 12px;cursor: move;">&nbsp;<input  id="summary-object-islocked" type="checkbox" name="summary-object-isvalidated-input" value="1"> (L)ocked<br></div>
+                <div style="position: absolute;right: 7px;top: 90px;font-size: 12px;cursor: move;">&nbsp;<input  id="summary-object-islocked" type="checkbox" name="summary-object-isvalidated-input" value="1"> Lock(E)d<br></div>
 
 
                 <div id="recenter-objects" style="min-width: 62px; position: absolute;right: -6px;top: 111px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-dot-circle-o" aria-hidden="true"></i>&nbsp;&nbsp;Re-Cen(T)er</a></div>
 
 
-                <div id="refresh-side-color" style="min-width: 62px; position: absolute;right: -6px;top: 139px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;&nbsp;R(E)-Colors</a></div>
+                <div id="refresh-side-color" style="min-width: 62px; position: absolute;right: -6px;top: 139px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;&nbsp;(R)e-Colors</a></div>
 
+
+              <div class="">
+                 <div id="summary-object-id" style="font-size: 40px;position: absolute;left: -264px;bottom: -129px;color: white;" class="">&nbsp;</div>
+              </div>
 
            </div>
         </div>
@@ -664,6 +665,8 @@ function onDocumentMouseMove(event) {
 
 
 
+        //var intersection = intersectWithCorner();
+        
         if (mouseDown && !isRotating && !isResizing && !isMoving &&
             !isRotatingTopView && !isMovingTopView && !isResizingTopView
         ) {
@@ -671,6 +674,7 @@ function onDocumentMouseMove(event) {
                 scene.add(newBox.points);
                 scene.add(newBox.boxHelper);
                 newBox.added = true;
+                
             }
             if (newBox) {
                 newBox.resize(app.getCursor());
@@ -730,14 +734,22 @@ var camera_angle;
 // controller for adding box
 function onDocumentMouseUp(event) {
     event.preventDefault();
+    mouseEvent = "up";
     if (!isRecording) {
         return;
     }
     if (isRecording) {
-        app.handleAutoDraw();
-
+        
 
         mouseDown = false;
+        
+        if (isInsideTheVisBox(event) == false) {
+
+            app.handleAutoDraw();
+        
+        }
+    
+        
         var predictBox = null;
         if (newBox != null && newBox.added) {
             addBox(newBox);
@@ -789,7 +801,7 @@ function onDocumentMouseUp(event) {
 function onDocumentMouseDown(event) {
 
     event.preventDefault();
-
+    mouseEvent = "down";
 
     if (!isRecording) {
         return;

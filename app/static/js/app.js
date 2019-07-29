@@ -85,6 +85,12 @@ function App() {
             return false;
         }
     };
+    
+    this.get_frame_idx= function(fname) {
+        
+        var idx = this.fnames.indexOf(fname);
+        return idx;
+    };
 
 
     this.bbox_visualization_clearance = function() {
@@ -233,18 +239,18 @@ function App() {
             bbox_max.z = bbox_max.z - center.x;
             bbox_max.x = bbox_max.x - center.y;
 
-            bbox_min.y = min_y - 0.3; // Value normalized from Denoise PointCNN  GROUND_TO_Z = 0.3
+            bbox_min.y = min_y - 0.2; // Value normalized from Denoise PointCNN  GROUND_TO_Z = 0.2
             bbox_min.z = bbox_min.z - center.x;
             bbox_min.x = bbox_min.x - center.y;
 
             if (Math.abs(bbox_min.y - bbox_max.y) > 20) { // Only use if the Height is Abs
-                bbox_min.y = -1.8;
-                bbox_max.y = -0.3;
+                //bbox_min.y = -1.8;
+                //bbox_max.y = -0.3;
             }
 
             if (selectedBox.height == 0) {
 
-                var car_height = Math.min(Math.abs(bbox_max.y - bbox_min.y), 3.0);
+                var car_height = Math.min(Math.abs(bbox_max.y - bbox_min.y), 10.0);
                 selectedBox.height = car_height;
             } else {
                 car_height = selectedBox.height;
@@ -296,7 +302,7 @@ function App() {
             scene2.add(annote_pointcloud);
             scene2.add(helper);
 
-            $("#summary-object-id").text(opt_box['box_id']);
+            $("#summary-object-id").text("["+opt_box['box_id']+"]");
             $("#summary-object-type").text(opt_box['object_id']);
             $("#summary-object-dimension").text( parseFloat(opt_box['width']).toFixed(2) +" x "+ parseFloat(opt_box['length']).toFixed(2) +" x "+ parseFloat(car_height).toFixed(2) );
             $("#summary-object-angle").text( (parseFloat( (opt_box['angle']) * (180/Math.PI) ) % 360 ) .toFixed(2) + " degree");
@@ -813,82 +819,92 @@ function App() {
                     settingsControls: settingsControls
                 }),
                 success: function(response) {
-                    var str = response.replace(/'/g, "\"");
-                    var res = JSON.parse(str);
-                    var corner1 = new THREE.Vector3(res.corner1[1], this.eps, res.corner1[0]);
-                    var corner2 = new THREE.Vector3(res.corner2[1], 0, res.corner2[0]);
-
-
-                    var newbox = createAndDrawBox(corner1,
-                        corner2,
-                        res['angle']);
                     
-                    if(newbox == null || newbox.boundingBox == false){
-                        return false;
-                    }
+                    if(response == ""){
+                        $("#title-container").text("No annotated point found!");
+                 
+                    }else{
 
-                    if (settingsControls.AutoDeleteExistingBbox) {
-                        //console.log("number of bboxes", app.cur_frame.bounding_boxes.length)
-
-                        for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
-                            box = app.cur_frame.bounding_boxes[i_box]
-                            //console.log("i_box", i_box);
-                            // if( bb_max.x >= p.x && bb_max.z >= p.z && bb_min.x <= p.x && bb_min.z <= p.z ) {
-
-                            if(box.islocked== false){
-                                if (p && containsPoint(box, p) || newbox.boundingBox.intersectsBox(box.boundingBox)) {
-
-                                    // Point is in bounding box
-
-                                    var old_id =  box.id;
-                                    newbox.predicted_state = box.predicted_state;
-                                    newbox.predicted_error = box.predicted_error;
-                                    
-                                    app.editing_box_id = false;
+                        var str = response.replace(/'/g, "\"");
+                        var res = JSON.parse(str);
+                        var corner1 = new THREE.Vector3(res.corner1[1], this.eps, res.corner1[0]);
+                        var corner2 = new THREE.Vector3(res.corner2[1], 0, res.corner2[0]);
 
 
-                                    scene.remove(box.points);
-                                    scene.remove(box.boxHelper);
+                        var newbox = createAndDrawBox(corner1,
+                            corner2,
+                            res['angle']);
 
-                                    //app.cur_frame.last_bbox_id = box.id;
-                                    box.text_label.element.remove();
+                        if(newbox == null || newbox.boundingBox == false){
+                            return false;
+                        }
 
-                                    // deletes corresponding row in object id table
-                                    deleteRow(box.id);
+                        if (settingsControls.AutoDeleteExistingBbox) {
+                            //console.log("number of bboxes", app.cur_frame.bounding_boxes.length)
 
-                                    // removes selected box from array of currently hovered boxes
-                                    hoverBoxes.splice(i_box, 1);
+                            for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
+                                box = app.cur_frame.bounding_boxes[i_box]
+                                //console.log("i_box", i_box);
+                                // if( bb_max.x >= p.x && bb_max.z >= p.z && bb_min.x <= p.x && bb_min.z <= p.z ) {
 
-                                    // removes selected box from array of bounding boxes
-                                    app.cur_frame.bounding_boxes.splice(i_box, 1);
+                                if(box.islocked== false){
+                                    if (p && containsPoint(box, p) || newbox.boundingBox.intersectsBox(box.boundingBox)) {
+
+                                        // Point is in bounding box
+
+                                        var old_id =  box.id;
+                                        newbox.predicted_state = box.predicted_state;
+                                        newbox.predicted_error = box.predicted_error;
+
+                                        app.editing_box_id = false;
 
 
-                                    app.increment_delete_count();
-                                    // removes selected box
-                                    selectedBox = null;
-                                    
-                                    
-                                    // Update box id
-                                    newbox.id = old_id;
-                                } 
+                                        scene.remove(box.points);
+                                        scene.remove(box.boxHelper);
+
+                                        //app.cur_frame.last_bbox_id = box.id;
+                                        box.text_label.element.remove();
+
+                                        // deletes corresponding row in object id table
+                                        deleteRow(box.id);
+
+                                        // removes selected box from array of currently hovered boxes
+                                        hoverBoxes.splice(i_box, 1);
+
+                                        // removes selected box from array of bounding boxes
+                                        app.cur_frame.bounding_boxes.splice(i_box, 1);
+
+
+                                        app.increment_delete_count();
+                                        // removes selected box
+                                        selectedBox = null;
+
+
+                                        // Update box id
+                                        newbox.id = old_id;
+                                    } 
+                                }
+
                             }
 
+
                         }
-                        
+
+                        addBox(newbox);
+
+                        selectedBox = newbox;
+                        selectRow(newbox.id);
+                        this.bbox_visualization();
+
+                        $("#title-container").text("");
+
 
                     }
-
-                    addBox(newbox);
-
-                    selectedBox = newbox;
-                    selectRow(newbox.id);
-                    this.bbox_visualization();
 
                     $("#loading-screen").hide();
 
-                    $("#title-container").text("");
-                    
                     autoDrawModeToggle(false);
+
                 },
                 error: function(error) {
                     console.log(error);
@@ -1219,6 +1235,7 @@ function show(frame) {
 
     updateCountBBOX();
 
+    switch2DMode();
     //camera3.rotateZ(3.14);
 
 

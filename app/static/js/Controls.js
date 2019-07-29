@@ -40,30 +40,30 @@ $('.moveGUI').append($(gui.domElement));
 var settingsControls = new SettingsControls();
 var settingsFolder = gui //.addFolder('settings');
 
-var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Hasan', 'Akhil','Zuxin', 'Mansur','Guilin','Manoj', 'Runzhong']).onChange(function() {
+var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Hasan', 'Akhil', 'Zuxin', 'Mansur', 'Guilin', 'Manoj', 'Runzhong']).onChange(function() {
     // Load Annotation - based on user ID
 
-    if(app && app.cur_frame){
-        
+    if (app && app.cur_frame) {
+
         var annotatorID = settingsControls["AnnotatorId"];
         settingsControls["AnnotatorId"] = app.annotatorID;
         app.write_frame_out();
         app.annotatorID = annotatorID;
         settingsControls["AnnotatorId"] = app.annotatorID;
-        
-        
+
+
         $("#annId select").prop("disabled", "disabled");
         app.lock_frame = false;
         var fname = app.cur_frame.fname;
         var framelist = Object.keys(app.frames);
 
-        
+
         app.bbox_visualization_clearance();
-        if(app.cur_frame){
-        
+        if (app.cur_frame) {
+
             for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
-                 box = app.cur_frame.bounding_boxes[i_box]
-                 delete_one_box(box);
+                box = app.cur_frame.bounding_boxes[i_box]
+                delete_one_box(box);
 
             }
 
@@ -74,27 +74,27 @@ var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Hasan
             app.cur_frame.bounding_boxes = [];
             delete app.cur_frame;
         }
-        
-        
-        
-        for(var i=0; i < framelist.length; i++){
+
+
+
+        for (var i = 0; i < framelist.length; i++) {
             var bboxes = app.frames[framelist[i]].bounding_boxes;
-            
-            
+
+
             for (var j = bboxes.length - 1; j >= 0; j--) {
-                
-                
-                var box =  bboxes[j];
 
- 
 
-                
+                var box = bboxes[j];
+
+
+
+
                 delete bboxes[j];
             }
             app.frames[framelist[i]].bounding_boxes = [];
             delete app.frames[framelist[i]];
         }
-        
+
         app.cur_frame = null;
         app.set_frame(fname);
         console.log("set_frame", settingsControls["AnnotatorId"]);
@@ -110,20 +110,20 @@ settingsFolder.add(settingsControls, 'FrameTracking').onChange(function() {
 });
 settingsFolder.add(settingsControls, 'FullyAutomatedBbox').onChange(function() {
 
-    
-    
+
+
     app.cur_frame.annotated = false;
 
-    if(settingsControls['FullyAutomatedBbox'] == false ){
-        
-       // deleteAllBoundingBox(false);
-    
+    if (settingsControls['FullyAutomatedBbox'] == false) {
+
+        // deleteAllBoundingBox(false);
+
     }
-    
+
     app.frame_lock = true;
     fname = app.cur_frame["fname"]
     //app.frames = []
-    app.fully_automated_bbox(fname);    
+    app.fully_automated_bbox(fname);
     app.frame_lock = false;
 
     updateCountBBOX();
@@ -183,7 +183,7 @@ PointsFolder.add(settingsControls, 'WithDenoising').onChange(function() {
 
     app.tempBBOX = [] // backupBBOX;
     app.set_frame(fname);
-    
+
     updateCountBBOX();
 
 });
@@ -258,9 +258,9 @@ visualizeFolder.add(settingsControls, 'PointSize').min(0.0).max(10.0).step(0.01)
 PointsFolder.open();
 settingsFolder.open();
 
-$(".property-name").each(function( index ) {
-  var textName = $( this ).text();
-$( this ).text( textName.replace(/([A-Z])/g, ' $1').trim() )
+$(".property-name").each(function(index) {
+    var textName = $(this).text();
+    $(this).text(textName.replace(/([A-Z])/g, ' $1').trim())
 
 });
 
@@ -290,14 +290,14 @@ function toggleRecord() {
 // controller for pressing hotkeys
 function clickKeystrokeControl(event) {
 
-        var KeyID = event.keyCode;
-        //console.log("KeyID", KeyID);
-        switch (KeyID) {
-      
-            case 68:
-            default:
-                break;
-        }
+    var KeyID = event.keyCode;
+    //console.log("KeyID", KeyID);
+    switch (KeyID) {
+
+        case 68:
+        default:
+            break;
+    }
 
 
 
@@ -335,22 +335,7 @@ function onKeyDown2(event) {
 
                 autoDrawModeToggle(false);
                 break;
-            case 69: // e key
-                //toogle_color();
-                break;
-                
-            case 76: // L key
-                
-                    if(selectedBox){
 
-                        var current_check = $("#summary-object-islocked").is(":checked");
-                        $("#summary-object-islocked").prop('checked', !current_check);
-
-                        toggle_locked_box(selectedBox);
-                    }
-
-
-                break;
 
             case 82: // r key
                 settingsControls.Clustering = "OriginAwareClustering";
@@ -386,36 +371,61 @@ function onKeyUp2(event) {
 
     if (isRecording) {
         var KeyID = event.keyCode;
-        
+
+                toggleControl(true);
         //console.log("KeyID", KeyID);
         switch (KeyID) {
 
-
+            case 32: // space key
+                gotonextFrame();
+                break;
+                
             case 65: // a key
-                settingsControls.FittingCriterion = 0;
                 autoDrawModeToggle(false);
                 break;
             case 67: // c key
-                settingsControls.FittingCriterion = 1;
                 autoDrawModeToggle(false);
                 break;
             case 68: // d key
                 //settingsControls.FittingCriterion=2;
                 //autoDrawModeToggle(false);
                 break;
-           case 69: // e key
+                
+            case 69: // e key
+
+                if (selectedBox) {
+
+                    var current_check = $("#summary-object-islocked").is(":checked");
+                    $("#summary-object-islocked").prop('checked', !current_check);
+
+                    toggle_locked_box(selectedBox);
+                }
+
+
+                break;
+                
+            case 81: // q key
+                gotopreviousObject();
+                break;
+
+            case 82: // r key
                 toogle_color();
                 break;
                 
-           case 84: // t key
-                   recenter_objects();
+            case 84: // t key
+                recenter_objects();
                 break;
                 
+                
             case 86: // v key
-                settingsControls.FittingCriterion = 3;
                 autoDrawModeToggle(false);
                 break;
 
+
+
+            case 87: // w key
+                gotonextObject();
+                break;
 
             default:
                 toggleControl(true);
@@ -430,6 +440,62 @@ function onKeyUp2(event) {
         toggleControl(true);
 
     }
+}
+
+function gotonextFrame(){
+    if (app.cur_frame){
+
+        var frame_idx = app.get_frame_idx(app.cur_frame.fname);
+        app.set_frame(app.fnames[frame_idx+1]);
+        unfocus_frame_row(getFrameRow(app.fnames[frame_idx]));
+        focus_frame_row(getFrameRow(app.fnames[frame_idx+1]));
+    }
+}
+
+
+function gotonextObject() {
+    return gottoObject(1);
+}
+
+function gotopreviousObject() {
+
+    return gottoObject(-1);
+}
+
+function gottoObject(object_location) {
+
+    if (app.cur_frame && selectedBox && controls.enabled) {
+        var box_ids =[];
+
+        var current_box_idx = selectedBox.id;
+        for (var i = 0; i < app.cur_frame.bounding_boxes.length; i++) {
+            box_ids.push(app.cur_frame.bounding_boxes[i].id);
+            if (selectedBox.id == app.cur_frame.bounding_boxes[i].id) {
+                current_box_idx = i;
+            }
+        }
+        
+        if(current_box_idx + object_location < 0){
+            object_location = box_ids.length  - current_box_idx -1 ;
+        }
+
+        boxId = box_ids[ (current_box_idx + object_location) % box_ids.length ];
+
+        box = getBoxById(boxId);
+        if (box) {
+
+
+            app.forceVisualize = true;
+            selectedBox = box;
+            app.bbox_visualization();
+
+            app.forceVisualize = false;
+
+        }
+    }
+
+    return null;
+
 }
 
 function showPreviousFrameBoundingBoxToggle(b) {
@@ -502,15 +568,15 @@ function onKeyUp(event) {
 
 // toggles between move2D and move3D
 function toggleControl(b) {
-    
+
     // controls3.enabled = b;
     // controls3.update();
 
     controls.enabled = b;
     controls.update();
-    
-    
-    if(app.isRedColor == false){
+
+
+    if (app.isRedColor == false) {
         app.forceVisualize = true;
         app.bbox_visualization();
         app.forceVisualize = false;
