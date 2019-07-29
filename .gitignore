@@ -3,3 +3,4 @@ app/test_dataset/
 app/static/images/
 app/PointCNN/output/
 pointcnn-models/
+*.pyc
