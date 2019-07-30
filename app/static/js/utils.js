@@ -96,9 +96,9 @@ function get_point_inside_box(vertices, opt_box, mask_indices, surrounding_eps){
             pointsIn.push( vertices[ sidebar_STRIDE * k + 2 ] ); 
             pointsIn.push( vertices[ sidebar_STRIDE * k + 3 ] ); 
             
-            py.push( vertices[ sidebar_STRIDE * k + 2 ] );
             
             if( mask_indices.includes(k) ){
+                py.push( vertices[ sidebar_STRIDE * k + 2 ] );
                 masked_indices.push(point_selected);
             }
             

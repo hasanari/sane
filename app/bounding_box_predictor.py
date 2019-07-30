@@ -192,6 +192,7 @@ class BoundingBoxPredictor():
         next_fname = self.frame_handler.drives[drivename][idx+1]
 
         ground_removed  = json_request["settingsControls"]["GroundRemoval"]
+        is_repaired_kalman_filter  = json_request["settingsControls"]["RepairedKalmanFilter"]
         
         car_points = get_pointcnn_labels(drivename+"/"+next_fname, json_request["settingsControls"], ground_removed=ground_removed)
         
@@ -220,16 +221,22 @@ class BoundingBoxPredictor():
             
             start = time.time()
 
-            new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc)) 
+            new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc), is_repaired_kalman_filter) 
+            #print("\t time to predict frame ", bounding_box.box_id, time.time() - start)
             self.next_bounding_boxes.append( NextFrameBBOX(bounding_box.box_id, new_bbox[1], new_bbox[0]) )
             
-            #Clean overlapping boxes  
-            self.fixed_overlapping_boxes(False)
 
             print("time to predict bounding box: ", bounding_box.box_id, time.time() - start)
 
 
                     
+        #Clean overlapping boxes  
+        start = time.time()
+        self.fixed_overlapping_boxes(False)
+        
+        print("time to fixed_overlapping_boxes: ", time.time() - start)
+
+
         final_bounding_boxes = {}
         for bbox in self.next_bounding_boxes:
             
@@ -250,7 +257,7 @@ class BoundingBoxPredictor():
                 if(bbox_check.id != bbox.id):
                     cur_index = -1
                     while(bbox_check.is_boxes_overlap(bbox) and cur_index!= 0): #IF the two boxes still overlap
-                        print(cur_index, bbox_check.id, bbox.id)
+                        #print(cur_index, bbox_check.id, bbox.id)
                         is_overlap_exist = True
                         if(bbox_check.get_center_dist() >=  bbox.get_center_dist()):
                             cur_index = bbox_check.update_index()
@@ -261,7 +268,7 @@ class BoundingBoxPredictor():
             return self.fixed_overlapping_boxes(False)
         
         
-    def _predict_next_frame_bounding_box(self, frame, bounding_box, pc):
+    def _predict_next_frame_bounding_box(self, frame, bounding_box, pc, is_repaired_kalman_filter):
         """Pure state to state linear movement Kalman Filter"""
         
         # Previous state initialization
@@ -304,10 +311,9 @@ class BoundingBoxPredictor():
         all_corners_set = {}
         all_corners_set[-1] = [corners, 0.0] # Init location
         
-        corners, all_corners_set = self.guided_search_bbox_location(corners, pc, -1, all_corners_set, bounding_box.center)
-        #new_bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, pc, False)
-        
-            
+        if(is_repaired_kalman_filter):        
+            corners, all_corners_set = self.guided_search_bbox_location(corners, pc, -1, all_corners_set, bounding_box.center)
+   
         return kalman_state, all_corners_set
         
         
@@ -329,7 +335,7 @@ class BoundingBoxPredictor():
         top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner, center, w, l = self.calibrate_orientation( top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
         
         
-        print("-start", top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
+        #print("-start", top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
         
         top_right_corner = top_right_corner - top_left_corner
         angle = np.arctan2(top_right_corner[1], top_right_corner[0])
@@ -462,7 +468,7 @@ class BoundingBoxPredictor():
             
         if(_number_of_points > max_points ):
             
-            print("guided_search_bbox_location", _number_of_points, corners.shape)
+            #print("guided_search_bbox_location", _number_of_points, corners.shape)
             return self.guided_search_bbox_location(corners, pc, _number_of_points, all_corners_set, center_predict)
         
         return corners, all_corners_set

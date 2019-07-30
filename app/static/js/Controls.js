@@ -17,9 +17,10 @@ var SettingsControls = function() {
     this.FullyAutomatedBbox = false;
     this.AutoUpdate = true;
 
-    this.SearchRange = 3.5;
+    this.SearchRange = 4.0;
     this.NeighborsRadius = 8;
 
+    this.RepairedKalmanFilter = true;
     this.AnnotatorId = 'Guest';
     this.GroundRemoval = false;
     this.ShapeFitting = false;
@@ -104,10 +105,6 @@ var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Hasan
 
 annId.domElement.id = "annId";
 
-settingsFolder.add(settingsControls, 'FrameTracking').onChange(function() {
-
-    enable_bounding_box_tracking = settingsControls['FrameTracking'];
-});
 settingsFolder.add(settingsControls, 'FullyAutomatedBbox').onChange(function() {
 
 
@@ -137,6 +134,21 @@ settingsFolder.add(settingsControls, 'FittingCriterion', {
     '(C)loseness': 1,
     '(V)ariance': 3
 });
+
+settingsFolder.add(settingsControls, 'FrameTracking').onChange(function() {
+
+    enable_bounding_box_tracking = settingsControls['FrameTracking'];
+    
+    if (enable_bounding_box_tracking) {
+        $("#RepairedKalmanFilter").parent().parent().show();
+    } else {
+        $("#RepairedKalmanFilter").parent().parent().hide();
+    }
+    
+});
+
+RepairedKalmanFilter = settingsFolder.add(settingsControls, 'RepairedKalmanFilter');
+RepairedKalmanFilter.domElement.id = "RepairedKalmanFilter";
 
 
 
@@ -456,26 +468,35 @@ function gotonextFrame(){
     }
 }
 
-function ReloadCurrentFrame(){
-    if (app.cur_frame){
-        app.bbox_visualization_clearance();
-        for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
-            box = app.cur_frame.bounding_boxes[i_box]
+function deleteFrameByFname(fname){
 
-
-                   delete_one_box(box);
-
+   if(fname in app.frames){
+   
+       var cur_frame = app.frames[fname];
+   
+         for (var i_box = cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
+             box =cur_frame.bounding_boxes[i_box]
+             delete_one_box(box);
 
         }
 
-        var fname = app.cur_frame.fname
-        var frame_idx = app.get_frame_idx(app.cur_frame.fname);
-        var frame = app.get_frame(app.cur_frame.fname);
+        delete app.frames[fname].data; 
+        delete app.frames[fname]; 
+       
+       console.log("delete fname", fname);
+   }
+}
 
-        delete app.frames[fname];
-        app.cur_frame = null;
+function ReloadCurrentFrame(){
+    if (app.cur_frame){
+        app.bbox_visualization_clearance();
         
-        app.lock_frame = false;
+        
+        var fname = app.cur_frame.fname;
+        deleteFrameByFname(fname);
+      
+        app.cur_frame = null;         
+        app.lock_frame = false;    
         app.set_frame(fname);
         
     }
@@ -610,6 +631,10 @@ function toggleControl(b) {
     controls.enabled = b;
     controls.update();
 
+
+
+    controls2.enabled = b;
+    controls2.update();
 
     if (app.isRedColor == false) {
         app.forceVisualize = true;

@@ -189,15 +189,11 @@ function App() {
             var data = _rest[0];
             var py = _rest[1];
             var masked_indices = _rest[2];
-            var max_y = 0;
-            var min_y = 99;
             var annote_pointcloud = generateNewPointCloud(data, COLOR_RED, false);
 
             for (var j = 0; j < masked_indices.length; j++) {
                 annote_pointcloud.geometry.colors[masked_indices[j]] = new THREE.Color(0x00ff6b);
 
-                max_y = Math.max(max_y, py[masked_indices[j]]);
-                min_y = Math.min(min_y, py[masked_indices[j]]);
             }
             annote_pointcloud.geometry.colorsNeedUpdate = true;
 
@@ -215,8 +211,17 @@ function App() {
 
             var count = 0;
             var colors = annote_pointcloudXZ.geometry.colors;
+            
+            var max_y = 0;
+            var min_y = 99;
+
+
             for (var i = 0; i < annote_pointcloudXZ.geometry.vertices.length; i++) {
                 var v = annote_pointcloudXZ.geometry.vertices[i];
+                
+                max_y = Math.max(max_y, v.y);
+                min_y = Math.min(min_y, v.y);
+                
                 if (colors[i].b > colors[i].r) {
                     count += 1;
                     v.y = -0.001;
@@ -224,6 +229,14 @@ function App() {
                     v.y = 0;
                 }
             }
+            
+            if( py.length > 10){            
+                var max_y = Math.max(...py);
+                var min_y = Math.min(...py);
+            }
+
+            //console.log(max_y, min_y);
+            
             annote_pointcloudXZ.geometry.verticesNeedUpdate = true;
 
 
@@ -240,14 +253,11 @@ function App() {
             bbox_max.z = bbox_max.z - center.x;
             bbox_max.x = bbox_max.x - center.y;
 
-            bbox_min.y = min_y - 0.2; // Value normalized from Denoise PointCNN  GROUND_TO_Z = 0.2
+            bbox_min.y = min_y- 0.2; // Value normalized from Denoise PointCNN  GROUND_TO_Z = 0.2
             bbox_min.z = bbox_min.z - center.x;
             bbox_min.x = bbox_min.x - center.y;
 
-            if (Math.abs(bbox_min.y - bbox_max.y) > 20) { // Only use if the Height is Abs
-                //bbox_min.y = -1.8;
-                //bbox_max.y = -0.3;
-            }
+     
 
             if (selectedBox.height == 0) {
 
@@ -261,7 +271,7 @@ function App() {
 
 
             var bbox = new THREE.Box3();
-            bbox.setFromCenterAndSize(new THREE.Vector3(0, bbox_min.y + car_height / 2, 0), new THREE.Vector3(opt_box.length, car_height, opt_box.width));
+            bbox.setFromCenterAndSize(new THREE.Vector3(0, bbox_min.y + (car_height / 2) , 0), new THREE.Vector3(opt_box.length, car_height, opt_box.width));
 
             
             var mat4 = new THREE.Matrix4();
@@ -286,15 +296,17 @@ function App() {
                 this.bbox3_min = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y, this.bboxObject.min.z);
                 this.bbox3_max = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y + car_height, this.bboxObject.min.z);
 
+                
                 bbox3DotGeometry.vertices.push(this.bbox3_max);
                 bbox3DotGeometry.vertices.push( this.bbox3_min );
 
-                bbox3DotGeometry.vertices.push(new THREE.Vector3(0, bbox_min.y + car_height / 2, 0));
+                //bbox3DotGeometry.vertices.push(new THREE.Vector3(0, bbox_min.y + car_height / 2, 0));
 
                 var dotMaterial = new THREE.PointsMaterial({
                     size: 8,
                     sizeAttenuation: false
                 });
+                dotMaterial.color = COLOR_RED.clone();
                 var z_dot = new THREE.Points(bbox3DotGeometry, dotMaterial);
                 scene2.add(z_dot);
 
@@ -570,7 +582,7 @@ function App() {
             $("#container").show();
 
         } else {
-            
+            $("#ReloadCurrentFrame").hide();
             $("#title-container").text("Retreiving frame data...");
             $.ajax({
                 context: this,
@@ -610,6 +622,16 @@ function App() {
                     
                     
                     show(frame);
+                    
+                    prev_name = this.get_prev_fname(fname);
+                    prev_prev_name = this.get_prev_fname(prev_name);
+                    
+                    for (var key in this.frames) { // Clear previous frames
+                        //if( key != fname && key != prev_name  && key != prev_prev_name ){
+                        if( key != fname && key != prev_name ){    
+                            deleteFrameByFname(key);
+                        }
+                    }
 
 
 
@@ -1246,6 +1268,8 @@ function show(frame) {
     switchMoveMode();
 
     updateCountBBOX();
+    
+    $("#ReloadCurrentFrame").show();
 
     //switch2DMode();
     //camera3.rotateZ(3.14);
