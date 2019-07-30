@@ -1,5 +1,57 @@
 import numpy as np
 
+def range_overlap(a_min, a_max, b_min, b_max):
+	'''Neither range is completely greater than the other
+	'''
+	return (a_min <= b_max) and (b_min <= a_max)
+
+        
+class NextFrameBBOX():
+	def __init__(self, box_id, back_tracking_boxes, kalman_state):
+		self.id = box_id
+		self.back_tracking_boxes = back_tracking_boxes
+		self.kalman_state = kalman_state
+		self.box_track_indices = sorted(back_tracking_boxes.keys())
+		self.current_box_track_index = len(self.box_track_indices)-1 # from very last
+        
+	def update_index(self):
+		self.current_box_track_index = self.current_box_track_index - 1
+		if(self.current_box_track_index < 0):
+			self.current_box_track_index = 0
+		return self.current_box_track_index
+    
+	def get_tracking_index(self):
+		return self.box_track_indices[self.current_box_track_index]
+        
+	def get_corners(self):
+		return self.back_tracking_boxes[self.get_tracking_index()][0]
+    
+	def get_center_dist(self):
+		return self.back_tracking_boxes[self.get_tracking_index()][1]
+    
+	def get_bounding_box(self, bbox):
+
+		bbox["center_dist"] = self.get_center_dist()
+		bbox["predicted_state"] = self.kalman_state["predicted_state"] 
+		bbox["predicted_error"] = self.kalman_state["predicted_error"] 
+		return bbox
+
+	def is_boxes_overlap(self, box_check):
+		return self.overlap(self.get_corners(), box_check.get_corners())
+    
+    
+        
+	#https://codereview.stackexchange.com/questions/31352/overlapping-rectangles
+	def overlap(self, corners_new, corners):
+		'''Overlapping rectangles overlap both horizontally & vertically
+		'''
+
+		r1 = {'left': np.min(corners[:,0]), 'right': np.max(corners[:,0]), 'bottom': np.min(corners[:,1]), 'top': np.max(corners[:,1]) }
+		r2 = {'left': np.min(corners_new[:,0]), 'right': np.max(corners_new[:,0]), 'bottom': np.min(corners_new[:,1]), 'top': np.max(corners_new[:,1]) }
+
+		return range_overlap(r1["left"], r1["right"], r2["left"], r2["right"]) and range_overlap(r1["bottom"], r1["top"], r2["bottom"], r2["top"])
+
+    
 
 class Frame():
 	def __init__(self, fname, bounding_boxes, dt=0.1):

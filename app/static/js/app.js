@@ -29,6 +29,7 @@ function App() {
         z: 0.0
     };
     this.cur_frame;
+    this.isAutoDrawOn =false;
     this.cur_pointcloud;
     this.move2D = false;
     this.eps = 0.00001;
@@ -719,6 +720,8 @@ function App() {
                     }
 
                     
+                    gottoObject(1);
+                    
                     $("#title-container").text("");
                     this.fully_automated_bbox(fname);
                     
@@ -738,6 +741,7 @@ function App() {
             $("#container").show();
             $("#title-container").text("");
             this.fully_automated_bbox(fname);
+            gottoObject(1);
         }
     };
 
@@ -800,7 +804,11 @@ function App() {
 
     this.handleAutoDraw = function() {
         
-        if (autoDrawMode && enable_one_click_annotation) {
+        if(this.isAutoDrawOn){
+            alert("Current annotation is in progress!");
+        }
+        
+        if (autoDrawMode && enable_one_click_annotation && this.isAutoDrawOn == false) {
 
             this.bbox_visualization_clearance();
 
@@ -808,6 +816,7 @@ function App() {
             $("#loading-screen").show();
 
             var p = app.getCursor();
+            this.isAutoDrawOn = true;
             $.ajax({
                 context: this,
                 url: '/predictBoundingBox',
@@ -820,6 +829,7 @@ function App() {
                 }),
                 success: function(response) {
                     
+                    this.isAutoDrawOn = false;
                     if(response == ""){
                         $("#title-container").text("No annotated point found!");
                  
@@ -908,14 +918,16 @@ function App() {
                 },
                 error: function(error) {
                     console.log(error);
-                    alert("No bounding box is found!");
+                    
+                    this.isAutoDrawOn = false;
+                    $("#title-container").text("No bounding box is found!");
                     //controls.enabled = true;
                     //controls.update();
 
                     autoDrawModeToggle(false);
                     $("#loading-screen").hide();
 
-                    $("#title-container").text("");
+                    //$("#title-container").text("");
                 }
             });
         }
@@ -1235,7 +1247,7 @@ function show(frame) {
 
     updateCountBBOX();
 
-    switch2DMode();
+    //switch2DMode();
     //camera3.rotateZ(3.14);
 
 

@@ -144,7 +144,7 @@ var PointsFolder = gui.addFolder('Points');
 
 PointsFolder.add(settingsControls, 'Clustering', {
     '(D)BSCAN': 'DBSCAN',
-    '(R)egion Growing': 'OriginAwareClustering'
+    'Region (G)rowing': 'OriginAwareClustering'
 }).onChange(function() {
     if (settingsControls["Clustering"] == "OriginAwareClustering") {
         $("#SearchRange").parent().parent().show();
@@ -330,19 +330,6 @@ function onKeyDown2(event) {
                 settingsControls.FittingCriterion = 1;
                 autoDrawModeToggle(true);
                 break;
-            case 68: // d key
-                settingsControls.Clustering = "DBSCAN";
-
-                autoDrawModeToggle(false);
-                break;
-
-
-            case 82: // r key
-                settingsControls.Clustering = "OriginAwareClustering";
-
-                autoDrawModeToggle(false);
-                break;
-
 
 
             case 86: // v key
@@ -380,6 +367,9 @@ function onKeyUp2(event) {
                 gotonextFrame();
                 break;
                 
+                
+                
+                
             case 65: // a key
                 autoDrawModeToggle(false);
                 break;
@@ -387,8 +377,10 @@ function onKeyUp2(event) {
                 autoDrawModeToggle(false);
                 break;
             case 68: // d key
-                //settingsControls.FittingCriterion=2;
-                //autoDrawModeToggle(false);
+                settingsControls.Clustering = "DBSCAN";
+                
+                PointsFolder.updateDisplay();
+                autoDrawModeToggle(false);
                 break;
                 
             case 69: // e key
@@ -403,6 +395,16 @@ function onKeyUp2(event) {
 
 
                 break;
+                
+
+            case 71: // g key
+                settingsControls.Clustering = "OriginAwareClustering";
+                
+                PointsFolder.updateDisplay();
+                autoDrawModeToggle(false);
+                break;
+
+                
                 
             case 81: // q key
                 gotopreviousObject();
@@ -431,6 +433,8 @@ function onKeyUp2(event) {
                 toggleControl(true);
                 break;
         }
+        
+        settingsFolder.updateDisplay();
     }
 
     if (event.ctrlKey) {
@@ -452,6 +456,32 @@ function gotonextFrame(){
     }
 }
 
+function ReloadCurrentFrame(){
+    if (app.cur_frame){
+        app.bbox_visualization_clearance();
+        for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
+            box = app.cur_frame.bounding_boxes[i_box]
+
+
+                   delete_one_box(box);
+
+
+        }
+
+        var fname = app.cur_frame.fname
+        var frame_idx = app.get_frame_idx(app.cur_frame.fname);
+        var frame = app.get_frame(app.cur_frame.fname);
+
+        delete app.frames[fname];
+        app.cur_frame = null;
+        
+        app.lock_frame = false;
+        app.set_frame(fname);
+        
+    }
+    
+    return false;
+}
 
 function gotonextObject() {
     return gottoObject(1);
@@ -464,23 +494,28 @@ function gotopreviousObject() {
 
 function gottoObject(object_location) {
 
-    if (app.cur_frame && selectedBox && controls.enabled) {
-        var box_ids =[];
-
-        var current_box_idx = selectedBox.id;
-        for (var i = 0; i < app.cur_frame.bounding_boxes.length; i++) {
-            box_ids.push(app.cur_frame.bounding_boxes[i].id);
-            if (selectedBox.id == app.cur_frame.bounding_boxes[i].id) {
-                current_box_idx = i;
-            }
-        }
+    if (app.cur_frame &&  app.cur_frame.bounding_boxes.length > 0 && controls.enabled) {
         
-        if(current_box_idx + object_location < 0){
-            object_location = box_ids.length  - current_box_idx -1 ;
+        if(selectedBox){
+            
+            var box_ids =[];
+
+            var current_box_idx = selectedBox.id;
+            for (var i = 0; i < app.cur_frame.bounding_boxes.length; i++) {
+                box_ids.push(app.cur_frame.bounding_boxes[i].id);
+                if (selectedBox.id == app.cur_frame.bounding_boxes[i].id) {
+                    current_box_idx = i;
+                }
+            }
+
+            if(current_box_idx + object_location < 0){
+                object_location = box_ids.length  - current_box_idx -1 ;
+            }
+
+            var boxId = box_ids[ (current_box_idx + object_location) % box_ids.length ];
+        }else{
+            var boxId =  app.cur_frame.bounding_boxes[0].id;
         }
-
-        boxId = box_ids[ (current_box_idx + object_location) % box_ids.length ];
-
         box = getBoxById(boxId);
         if (box) {
 

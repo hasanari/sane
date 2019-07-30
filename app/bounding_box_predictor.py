@@ -14,123 +14,22 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import time
 import math
+from models import NextFrameBBOX
 
 from mask_rcnn import get_pointcnn_labels
 
-CAR_SHAPE = {
-   # "suv" : {"width": 4.398504570721579, "length": 1.7581043589275447},
-    "suv" : {"width": 3.45, "length": 1.77},
-    "truck" : {},
-    "truck" : {},
-    "truck" : {}
-}
-
-
-
-
-# This Parameter only for Car objects 
-"""
-distribution_pts = [     2.1770e+03,   2.1770e+03,  2177.        , 2840.01764706,
-       2591.44791667, 2620.98920863, 1691.25454545, 1156.63664596,
-        797.61849711,  666.90149626,  612.04436451,  524.61043689,
-        466.82988506,  377.10612691,  315.22765073,  261.31118143,
-        222.88185654,  197.18070953,  167.83592018,  153.9748996 ,
-        133.69254658,  111.69578313,   99.31440162,   86.47524752,
-         81.00598802,   72.21800434,   62.41469194,   58.53493976,
-         52.56440281,   48.3381295 ,   46.08064516,   39.30787589,
-         37.32566586,   33.92772512,   31.80933333,   30.35775862,
-         27.99710983,   25.87605634,   24.95076923,   23.19      ,
-         21.95032051,   20.1462585 ,   20.01737452,   19.75830258,
-         16.38157895,   15.82806324,   14.97560976,   14.01746725,
-         12.71527778,   12.3480663 ,   12.33116883,   11.57803468,
-         11.11949686,   10.20486111,   10.03741497,    8.72836538,
-          8.84586466,    9.05701754,    8.33139535,    8.36238532,
-          8.29166667,    8.32954545,    7.63186813,    8.0625    ,
-          7.7734375 ,    7.44067797,    6.69166667,    6.64754098,
-          6.76923077,    7.175     ,    6.84313725,    6.90789474,
-          6.56382979,    6.7625    ,    6.29411765,    6.19230769,
-          6.33333333,    6.91666667,    6.03333333,    7.        ,
-          5.95454545,    5.8       ,    5.        ]
-"""
-
-from sklearn.metrics import pairwise_distances
-IGNORE_NEIGBOR = 9999999999
-UNCLASSIFIED = False
-NOISE = None     
-distribution_pts = [ 2177, 2177, 2177., 817., 788., 996., 519., 336., 109., 105., 121., 84., 93., 28., 15., 5., 5., 5., 5., 21., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5., 5.]
-max_distance = 4
-volume = 22.0
-
-def batch_distance_matrix(A, B):
+def distances_points_to_line(p0, p1, p2):
+     
+    #https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+    n = p0.shape[0]
+    x0= p0[:,0]
+    y0= p0[:,1]
+    x1= np.ones(n) * (p1[0])
+    y1= np.ones(n) * (p1[1])
+    x2= np.ones(n) * (p2[0])
+    y2= np.ones(n) * (p2[1])
     
-    
-    
-    #A[:,:,2] = 0
-    #B[:,:,2] = 0
-    #A = A[:,:,:2]
-    #B = B[:,:,:2]
-    A = A[:,:,[0,2]]
-    B = B[:,:,:[0,2]]
-    r_A = np.sum(A * A, axis=2, keepdims=True)
-    r_B = np.sum(B * B, axis=2, keepdims=True)
-    m = np.matmul(A, np.transpose(B, axes=(0, 2, 1)))
-    D = r_A - 2 * m + np.transpose(r_B, axes=(0, 2, 1))
-    
-    return D
-
-def matrix_scan(m,  max_distance, min_points):
-
-
-    m = np.concatenate( [ m[:,0:1], m[:,1:2] ], axis=-1 )
-                            
-    print("m", m.shape)
-    _points = np.expand_dims(m, 0)
-    #D = batch_distance_matrix(_points, _points)[0]
-    
-    D = pairwise_distances(m, m, 'manhattan')
-    
-    
-    di = np.diag_indices(D.shape[0])
-    D[di] = IGNORE_NEIGBOR # Remove all diagonal
-    D[ D >= max_distance] = IGNORE_NEIGBOR # Remove all more than Maximum Distances between points
-    #D[ D <= eps] = IGNORE_NEIGBOR # Remove all more than Minimum Distances between points
-    
-    
-    #Include Volume Filtering
-    
-    considered_nn = D != IGNORE_NEIGBOR
-    
-    considered_nn_counts = [ len( considered_nn[point_id].nonzero()[0]) for point_id in range(D.shape[0])]
-    
-
-    input_counts = list(considered_nn_counts)
-    #Include Origin Aware Minimum-PTS
-    distance_origin = np.sqrt(m[:,0]*m[:,0] + m[:,1]*m[:,1]).astype(int)
-    for _i in range(D.shape[0]):
-        if( distance_origin[_i] < len(distribution_pts) ): #Only change the value within the length
-            if( distribution_pts[ distance_origin[_i]  ] > considered_nn_counts[_i] ): #Check if min-pts acceptable
-                considered_nn_counts[_i] = 0
-
-    _opt = np.array(considered_nn_counts)
-    
-
-    clustered_list =  np.ones(_opt.shape[0]) - 2
-    cluster_id = 0
-    center_cluster = []
-    while(max(_opt) > min_points):
-        max_indices = np.argmax(_opt)
-        found_object_idx = list(considered_nn[max_indices].nonzero()[0])
-        found_object_idx.append(max_indices)
-
-        center_cluster.append(max_indices)
-        
-        clustered_list[found_object_idx] = cluster_id
-
-        _opt[found_object_idx] = 0
-        cluster_id =  cluster_id +1
-
-
-    return clustered_list.astype(int), center_cluster
+    return np.abs( ((y2-y1)*x0) - ((x2-x1)*y0) + (x2*y1) - (y2*x1) ) / np.sqrt( np.square(y2-y1) + np.square(x2-x1 )  )
 
 
 def rotation_matrix(theta):
@@ -170,14 +69,10 @@ def rotate_origin_only_bulk(xy, radians):
 
     return np.array([xx, yy]).transpose()
 
-def range_overlap(a_min, a_max, b_min, b_max):
-    '''Neither range is completely greater than the other
-    '''
-    return (a_min <= b_max) and (b_min <= a_max)
 
-        
 class BoundingBoxPredictor():
     def __init__(self, frame_handler):
+        self.next_bounding_boxes = []
         self.n_segs = (1,1)
         self.n_iter=5
         self.n_lpr=500
@@ -242,8 +137,7 @@ class BoundingBoxPredictor():
         max_distance_per_class =1.0
         type_criterion =  1
         is_shape_fitting_required = False
-        
-        
+               
         
         #object_ids, center_cluster = matrix_scan(points_class[ : ,:3], max_distance_per_class, 20)
 
@@ -297,22 +191,8 @@ class BoundingBoxPredictor():
         idx = self.frame_handler.drives[drivename].index(fname)
         next_fname = self.frame_handler.drives[drivename][idx+1]
 
-        
-        
         ground_removed  = json_request["settingsControls"]["GroundRemoval"]
         
-        #print("ground_removed", ground_removed)
-    
-        car_points = get_pointcnn_labels(drivename+"/"+fname, json_request["settingsControls"], ground_removed=ground_removed)
-        
-        pc = self.frame_handler.get_pointcloud(drivename, fname, dtype=float, ground_removed=ground_removed)
-        
-        
-        
-        pc = pc[car_points]
-        
-        
-    
         car_points = get_pointcnn_labels(drivename+"/"+next_fname, json_request["settingsControls"], ground_removed=ground_removed)
         
         
@@ -335,84 +215,56 @@ class BoundingBoxPredictor():
         next_pc_small = next_pc[::4]
         
         """
-        next_bounding_boxes_storage = {}
-        next_bounding_boxes = {}
+        self.next_bounding_boxes = [] #Init bounding boxes
         for bounding_box in bounding_boxes:
-            try:
-                new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc)) 
-                
-                next_bounding_boxes_storage[str(bounding_box.box_id)] = new_bbox
-                
-                kalman_state = new_bbox[0]
-                all_corners_set = new_bbox[1]
-                
-                c_key = sorted(all_corners_set.keys())[-1]
-                print("all_corners_set",  all_corners_set[c_key])
-                
-                new_bounding_box, _, _ = self.corners_to_bounding_box(all_corners_set[c_key][0], np.copy(next_pc), False)
-                #new_bounding_box["corners"] = all_corners_set[c_key][0]
-                new_bounding_box["center_dist"] = all_corners_set[c_key][1]
-                new_bounding_box["predicted_state"] = kalman_state["predicted_state"] 
-                new_bounding_box["predicted_error"] = kalman_state["predicted_error"] 
-
-
-                next_bounding_boxes[str(bounding_box.box_id)] = new_bounding_box
-                print("next_bounding_boxes[str(bounding_box.box_id)]",new_bbox)
-            except:
-                pass
-
             
-        #Clean overlapping boxes
-        
-        
-        #kalman_state, all_corners_set
+            start = time.time()
 
-        # next_bounding_boxes = {str(bounding_box.box_id):self._predict_next_frame_bounding_box(bounding_box, next_pc_small) 
-        #                         for bounding_box in bounding_boxes}
-        #return {}
-        return next_bounding_boxes
-    
-    
-    #https://codereview.stackexchange.com/questions/31352/overlapping-rectangles
-    def overlap(self, corners_new, corners):
-        '''Overlapping rectangles overlap both horizontally & vertically
-        '''
-        
-        r1 = {'left': np.min(corners[:,0]), 'right': np.max(corners[:,0]), 'bottom': np.min(corners[:,1]), 'top': np.max(corners[:,1]) }
-        r2 = {'left': np.min(corners_new[:,0]), 'right': np.max(corners_new[:,0]), 'bottom': np.min(corners_new[:,1]), 'top': np.max(corners_new[:,1]) }
-        
-        return range_overlap(r1.left, r1.right, r2.left, r2.right) and range_overlap(r1.bottom, r1.top, r2.bottom, r2.top)
-
-
-
-    
-    def fixed_overlapping_boxes(self, new_bounding_boxes, check_box, next_bounding_boxes_storage):
-        
-        corners_new = check_box["corners"]
-        
-        box_keys = sorted(new_bounding_boxes.keys())
-        
-        for key in box_keys:
+            new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc)) 
+            self.next_bounding_boxes.append( NextFrameBBOX(bounding_box.box_id, new_bbox[1], new_bbox[0]) )
             
-            bounding_box = new_bounding_boxes[key]
-        
-            corners = bounding_box["corners"]
-            """
-            if(self.overlap(corners_new, corners)): #Boxes Overlap, reorder
-                #Check Center Box to Predict Center (kalmanx_hat )
-                if(check_box["center_dist"] > bounding_box["center_dist"] ):
-                    #check_box go to previous
+            #Clean overlapping boxes  
+            self.fixed_overlapping_boxes(False)
+
+            print("time to predict bounding box: ", bounding_box.box_id, time.time() - start)
+
+
                     
-                else:
-                
-            """
+        final_bounding_boxes = {}
+        for bbox in self.next_bounding_boxes:
+            
+            bbox_structure, _, _ = self.corners_to_bounding_box( bbox.get_corners(), None, False)
+            final_bounding_boxes[str(bbox.id)]=bbox.get_bounding_box(bbox_structure)
         
+
+        return final_bounding_boxes
+    
+    
+
+
+    
+    def fixed_overlapping_boxes(self, is_overlap_exist):
+
+        for bbox_check in self.next_bounding_boxes:
+            for bbox in self.next_bounding_boxes:
+                if(bbox_check.id != bbox.id):
+                    cur_index = -1
+                    while(bbox_check.is_boxes_overlap(bbox) and cur_index!= 0): #IF the two boxes still overlap
+                        print(cur_index, bbox_check.id, bbox.id)
+                        is_overlap_exist = True
+                        if(bbox_check.get_center_dist() >=  bbox.get_center_dist()):
+                            cur_index = bbox_check.update_index()
+                        else:
+                            cur_index = bbox.update_index()
+                
+        if(is_overlap_exist):
+            return self.fixed_overlapping_boxes(False)
         
         
     def _predict_next_frame_bounding_box(self, frame, bounding_box, pc):
-        start = time.time()
-        
         """Pure state to state linear movement Kalman Filter"""
+        
+        # Previous state initialization
         z_k = bounding_box.center
         x_k =  bounding_box.predicted_state
         P_k =  bounding_box.predicted_error
@@ -424,57 +276,42 @@ class BoundingBoxPredictor():
         R = frame.R_MATRIX
 
         y_k = z_k - np.matmul(H, x_k)
-
+        
         _temp = np.linalg.inv( R + np.matmul( np.matmul( H, P_k), np.transpose(H)) )
-        print("_temp", _temp)
         K_k = np.matmul( np.matmul(P_k, np.transpose(H)), _temp)
-
-        print("K_k", K_k, y_k, x_k)
         bounding_box.predicted_state = x_k + np.matmul(K_k, y_k)
 
-        print(bounding_box.predicted_state)
+
         _temp =np.eye(6) - np.matmul(K_k, H)
-        
-        print()
         bounding_box.predicted_error = np.matmul( np.matmul( _temp, P_k), np.transpose(_temp) ) + np.matmul( np.matmul(K_k, R),np.transpose(K_k) )
 
-        
-        print("bounding_box.predicted_error", bounding_box.predicted_error)
-        # Update
-        
-        
+        # Update operation
         center_old = bounding_box.center
         x_hat = np.matmul(frame.F_MATRIX, bounding_box.predicted_state) 
-
-        predicted_error =  np.matmul( np.matmul(frame.F_MATRIX, bounding_box.predicted_error) , np.transpose(frame.F_MATRIX) ) + frame.Q_MATRIX
-        
+        predicted_error =  np.matmul( np.matmul(frame.F_MATRIX, bounding_box.predicted_error) , np.transpose(frame.F_MATRIX) ) + frame.Q_MATRIX        
         bounding_box.center = x_hat[:2]
-        print("predicted_error", predicted_error, predicted_error.shape)
-        print("center_old", center_old, center_old.shape)
-        print("x_hat", bounding_box.center, x_hat.shape)
-        print("_predict_next_frame_bounding_box")
-        
-        corners = bounding_box.get_corners() 
-        print("corners", corners)
-        
-        #bounded_indices = bounding_box.filter_points(pc)
-        
-        all_corners_set = {}
-        
-        all_corners_set[-1] = [corners, 0.0]
-        corners, all_corners_set = self.greedy_point_search(corners, pc, -1, all_corners_set, bounding_box.center)
-        #new_bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, pc, False)
-        
+
         kalman_state = {}
         kalman_state["predicted_error"] = np.diag(predicted_error).tolist()
         kalman_state["predicted_state"] = x_hat.tolist()
 
-        print("time to predict bounding box: ", time.time() - start)
+        
+        # Updating new corners with x_hat (new prediction state) as center
+        corners = bounding_box.get_corners() 
+        
+        """BBOX guided greedy update with Point annotation"""
+        
+        all_corners_set = {}
+        all_corners_set[-1] = [corners, 0.0] # Init location
+        
+        corners, all_corners_set = self.guided_search_bbox_location(corners, pc, -1, all_corners_set, bounding_box.center)
+        #new_bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, pc, False)
+        
             
         return kalman_state, all_corners_set
         
         
-    def greedy_point_search(self, corners, points, max_points, all_corners_set, center_predict):
+    def guided_search_bbox_location(self, corners, points, max_points, all_corners_set, center_predict):
         
         pc = np.copy(points) #Backup original
         
@@ -498,8 +335,7 @@ class BoundingBoxPredictor():
         angle = np.arctan2(top_right_corner[1], top_right_corner[0])
         top_right_corner += top_left_corner
         
-        
-  
+        #Centerized all point to origin (0,0)
         _origin = top_left_corner
 
         top_left_corner=top_left_corner-_origin
@@ -511,17 +347,14 @@ class BoundingBoxPredictor():
         top_right_corner = top_right_corner - top_left_corner
         angle = np.arctan2(top_right_corner[1], top_right_corner[0])
         top_right_corner += top_left_corner
-
-
-
+        
         points[:,:2] = points[:,:2] - _origin
-
+        
+        
+        #Rotate Points to 0 degree
         points[:,:2] = rotate_origin_only_bulk(points[:,:2], angle)
 
-
-        #plt.scatter(points[:,1], points[:,0], c='r', s=1)
-
-        #Rotate Point to Origin
+        
         new_top_left_corner = rotate_origin_only(top_left_corner, angle)
         new_top_right_corner = rotate_origin_only(top_right_corner, angle)
         new_bottom_right_corner = rotate_origin_only(bottom_right_corner, angle)
@@ -529,75 +362,73 @@ class BoundingBoxPredictor():
 
         new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l = self.calibrate_orientation( new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner)
 
-
-        #newline(top_left_corner,top_right_corner, 'g')
-        #newline(top_right_corner,bottom_right_corner, 'g')
-        #newline(bottom_right_corner,bottom_left_corner, 'g')
-        #newline(bottom_left_corner,top_left_corner, 'g')
-
-
-        #newline(new_top_left_corner,new_top_right_corner)
-        #newline(new_top_right_corner,new_bottom_right_corner)
-        #newline(new_bottom_right_corner,new_bottom_left_corner)
-        #newline(new_bottom_left_corner,new_top_left_corner)
-
-
-        #print("new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l")
-        #print(new_top_left_corner, new_top_right_corner, new_bottom_right_corner, new_bottom_left_corner, center, w, l)
-
-
-        search_number = 100
+        
+        #Search location with maximum number of contained points
+        search_number = 100 # 100*100 search space
 
         car_size = {"width": w, "length": l}
 
-
         _data_check = []
-        print(car_size)
         
         ys = np.linspace(new_bottom_left_corner[1]-(car_size["length"]/5), new_top_left_corner[1]+(car_size["length"]/5), search_number)
         xs = np.linspace(new_bottom_left_corner[0]-(car_size["width"]/5), new_bottom_right_corner[0]+(car_size["width"]/5), search_number)
-        
-        #print(ys)
-        #print(xs)
-        
-        
+
         for _y in ys:
             for _x in xs:
-
-
                 pointsInside = np.array(( 
                 points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
                 points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
 
                 pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
 
-                _data_check.append([_x, _y ,len(pointsInside)])
+                _data_check.append([_x, _y ,len(pointsInside), pointsInside])
 
-
-
-                #top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -0)
-                #top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -0)
-                #bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -0)
-                #bottom_left_corner = rotate_origin_only([_x,_y], -0)
-
-
-                #newline(top_left_corner,top_right_corner, 'g')
-                #newline(top_right_corner,bottom_right_corner, 'g')
-                #newline(bottom_right_corner,bottom_left_corner, 'g')
-                #newline(bottom_left_corner,top_left_corner, 'g')
 
 
         _data_check = np.array( _data_check )
 
-        _max = np.argmax(_data_check[:,2] )
+        _best_location = np.argmax(_data_check[:,2] )
         
-        _number_of_points = _data_check[_max,2]
+        _number_of_points = _data_check[_best_location,2]
         
-        print(_max, _data_check[_max,:]) #,  np.unique(_data_check[:,2], return_counts=True))
+        error_annotation_treshold = 10
         
-        print("_data_check", _data_check)
-
-        _x, _y = _data_check[_max,:2]
+        # select max with error treshold
+        idx_max_all = (_data_check[:,2] >= (_number_of_points - error_annotation_treshold) ).nonzero()[0] 
+        
+        # If multiple locations have the same number of contained points 
+        if(len(idx_max_all) > 1): 
+            #Get bounding box location by minimazing all-point distance to 4 box-edges
+            rest = np.ones(len(idx_max_all) ) * 999999
+            
+            idx_loop_max = 0
+            for idx_bbox in idx_max_all:  
+                _x, _y, _, pointsInside = _data_check[idx_bbox,:]
+               
+                
+                p0 = np.copy( points[pointsInside, :])
+                c1 = np.array([_x, _y])
+                c2 = np.array([_x, _y+l])
+                c3 = np.array([_x+w, _y])
+                c4 = np.array([_x+w, _y+l])
+            
+                d1 = distances_points_to_line(p0, c1, c2)
+                d2 = distances_points_to_line(p0, c1, c3)
+                d3 = distances_points_to_line(p0, c3, c4)
+                d4 = distances_points_to_line(p0, c4, c2)
+            
+                dist_all = np.vstack([d1,d2,d3,d4])
+                dist_min = np.min(dist_all, axis=0)
+                
+                rest[idx_loop_max] = np.mean(dist_min)
+                idx_loop_max = idx_loop_max +1
+           
+            _min = np.argmin(rest) # get location with minimum point distances
+            
+            _best_location = idx_max_all[_min] # Update current best point location
+        
+            
+        _x, _y = _data_check[_best_location,:2]
 
         pointsInside = np.array(( 
         points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
@@ -606,20 +437,7 @@ class BoundingBoxPredictor():
         pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
 
 
-
-        #top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -0)
-        #top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -0)
-        #bottom_right_corner = rotate_origin_only([_x+car_size["width"], _y], -0)
-        #bottom_left_corner = rotate_origin_only([_x,_y], -0)
-
-
-
-        #newline(top_left_corner,top_right_corner, 'r')
-        #newline(top_right_corner,bottom_right_corner, 'r')
-        #newline(bottom_right_corner,bottom_left_corner, 'r')
-        #newline(bottom_left_corner,top_left_corner, 'r')
-
-
+        # Recovering corner orientation, with angle rotation!
 
         top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -angle)
         top_right_corner = rotate_origin_only([_x+car_size["width"], _y+car_size["length"]], -angle)
@@ -629,14 +447,13 @@ class BoundingBoxPredictor():
 
 
 
+        # Recovering point location, with + _origin box location!
         top_left_corner=top_left_corner + _origin
         top_right_corner=top_right_corner +_origin
         bottom_right_corner=bottom_right_corner +_origin
         bottom_left_corner=bottom_left_corner + _origin
 
         corners= np.vstack([top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner])
-        
-        print("-last", top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
         
         center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
         
@@ -645,8 +462,8 @@ class BoundingBoxPredictor():
             
         if(_number_of_points > max_points ):
             
-            print("greedy_point_search", _number_of_points, corners.shape)
-            return self.greedy_point_search(corners, pc, _number_of_points, all_corners_set, center_predict)
+            print("guided_search_bbox_location", _number_of_points, corners.shape)
+            return self.guided_search_bbox_location(corners, pc, _number_of_points, all_corners_set, center_predict)
         
         return corners, all_corners_set
            
