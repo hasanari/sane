@@ -6,6 +6,7 @@ function App() {
     this.annotatorID='Guest';
     this.selectedBoxWidth=0;
     this.selectedBox;
+    this.selectedBox3DView;
     this.forceVisualize = false;
     this.isRedColor = true;
     this.isLiveRecolors = false;
@@ -53,7 +54,7 @@ function App() {
                     var drive = drive_keys[i];
                     for (var j = 0; j < this.drives[drive].length; j++) {
                         
-                        if(j > 100){
+                        if(j > 1000){
                             break;
                         }
                         var fname = pathJoin([drive, this.drives[drive][j].split('.')[0]]);
@@ -282,6 +283,7 @@ function App() {
             helper.rotation.y = opt_box.angle;
 
             this.bboxObject = bbox;
+            this.bboxObjecthelper = helper;
 
             for (var i = scene2.children.length - 1; i >= 0; i--) {
                 scene2.remove(scene2.children[i]);
@@ -335,7 +337,7 @@ function App() {
 
             
 
-            if (this.not_update_all_bbox == false) {
+            if (this.not_update_all_bbox == false) { // Updated all views!!
 
                 for (var i = scene3.children.length - 1; i >= 0; i--) {
                     scene3.remove(scene3.children[i]);
@@ -446,8 +448,6 @@ function App() {
             return;
         }
         
-          
-
 
         var cur_idx = this.fnames.indexOf(fname);
         if(app.cur_frame.annotated){
@@ -527,7 +527,11 @@ function App() {
                 
                 this.bbox_visualization();
                 
-                
+
+                settingsControls.FullyAutomatedBbox = false;
+
+                settingsFolder.updateDisplay();
+
                 
             },
             error: function(error) {
@@ -697,10 +701,10 @@ function App() {
                 success: function(response) {
                     
                     $("#title-container").text("Writing  prediction...");
-                    console.log("response", response);
+                    //console.log("response", response);
                     if( response == "error"){
                         
-                        next_frame.annotated = false;
+                        //next_frame.annotated = false;
                     }else{
                         var res = response.split("\'").join("\"");
                         res = JSON.parse(res);
@@ -718,9 +722,12 @@ function App() {
                                     corner2,
                                     json_box['angle']);
 
-                                box.predicted_state =  json_box['predicted_state'];
-                                box.predicted_error =  json_box['predicted_error'];
-                                 if( isOverlapWithLockedBBOX(box) ){
+                                 box.predicted_state =  json_box['predicted_state'];
+                                 box.predicted_error =  json_box['predicted_error'];
+                                 box.object_id =  json_box['object_id'];
+                                 box.id =  box_id;
+                                 
+                                if( isOverlapWithLockedBBOX(box) ){
 
                                     app.cur_frame.last_bbox_id = box.id;
 
@@ -750,6 +757,8 @@ function App() {
                     
                     $("#loading-screen").hide();
                     $("#container").show();
+                    
+                    $("#GoToNextFrame").focus();
 
                 },
                 error: function(error) {
@@ -1051,8 +1060,10 @@ function App() {
             
             var box_ids = [];
             for (var i = 0; i < app.cur_frame.bounding_boxes.length; i++) {
-                box_ids.push(app.cur_frame.bounding_boxes[i].id);
+                app.cur_frame.bounding_boxes[i].id  = parseInt(app.cur_frame.bounding_boxes[i].id )
+                box_ids.push( app.cur_frame.bounding_boxes[i].id );
             }
+            //console.log(box_ids);
             
             if(box_ids.includes(app.cur_frame.last_bbox_id ) == false){
                 return app.cur_frame.last_bbox_id;
@@ -1062,7 +1073,7 @@ function App() {
                 return Math.max.apply(Math, box_ids) + 1;
             }
         }
-        return 0;
+        return 99;
     }
 
     this.get_Mask_RCNN_Labels = function(fname) {
@@ -1230,6 +1241,10 @@ function parsePythonJSON(json) {
 function show(frame) {
     var initPointCloud;
 
+    
+    var is_object_table_visible = $("#object-table").is(":visible");
+
+    
     if (app.cur_frame) {
         clearObjectTable();
     }
@@ -1265,13 +1280,33 @@ function show(frame) {
     }
     app.cur_frame.scene_add_frame_children();
     loadObjectTable();
+    
+     var _current = app.move2D;
     switchMoveMode();
 
+    switch2DMode();
+    app.move2D = _current;
     updateCountBBOX();
     
     $("#ReloadCurrentFrame").show();
 
-    //switch2DMode();
+    if(app.move2D == true){
+        
+        switch2DMode();
+    }
+    
+    if(is_object_table_visible){
+
+        switch2DMode();
+        
+        
+        eventFire(document.getElementById('objectIDs'), 'click');
+        
+        $("#GoToNextFrame").focus();
+        
+        
+    }
+    
     //camera3.rotateZ(3.14);
 
 

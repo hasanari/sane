@@ -336,6 +336,13 @@ function init() {
 
     });
 
+
+    $("#object-table").show();
+    $("#frames-table").hide();
+    document.getElementById('move2D').className = "";
+    document.getElementById('objectIDs').className = "selected";
+    document.getElementById('move').className = "";
+
 }
 
 function recenter_objects(){
@@ -536,7 +543,78 @@ function updateMouse(event) {
     // console.log(event.clientX , event.clientY, mouse2D, mouse2DTopView);
 }
 
+function rotationBox(updateAngle){
 
+
+        var oldAngle = app.selectedBox.angle;
+        app.selectedBox.rotate(app.selectedBox.angle - updateAngle );
+        app.selectedBox.add_timestamp();
+
+        selectedBox.innerRotate(app.selectedBox.angle - oldAngle);
+        selectedBox.add_timestamp();
+
+
+}
+
+function moveBoxLocations(_x, _z, is_mouse_up){
+
+
+      if(selectedBox && !controls.enabled && selectedBox.islocked == false){
+          
+
+
+        var main_cursor = selectedBox.get_center().clone();
+        var current_cursor =  app.selectedBox.get_center().clone(); //new THREE.Vector2(0.0, 0.0);
+
+        current_cursor = new THREE.Vector3(current_cursor.x, 0.0, current_cursor.z);
+        main_cursor = new THREE.Vector3(main_cursor.x, 0.0, main_cursor.z);
+
+        app.selectedBox.cursor = current_cursor.clone(); //new THREE.Vector2(0.0, 0.0);
+        selectedBox.cursor = main_cursor.clone();
+
+        //console.log("main_cursor", main_cursor, current_cursor);
+        main_cursor.x = main_cursor.x + _z;
+        main_cursor.z = main_cursor.z + _x;
+
+
+        current_cursor.x = current_cursor.x + _z;
+        current_cursor.z = current_cursor.z + _x;
+
+
+        //console.log("updated_main_cursor", main_cursor, current_cursor);
+
+        app.selectedBox.translate(current_cursor);
+        app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
+        app.selectedBox.add_timestamp();
+
+        selectedBox.translate(main_cursor);
+        selectedBox.changeBoundingBoxColor(selected_color.clone());
+        selectedBox.add_timestamp();
+
+        mirror2DViewto3DviewBox();
+
+      }
+                            
+    
+}
+
+function mirror2DViewto3DviewBox(){
+
+    var SideViewBoxSize = app.selectedBox.boundingBox.getSize().clone();
+    var SideViewBoxCenter = app.selectedBox.boundingBox.getCenter().clone();
+    var box3d_size =  app.bboxObject.getSize().clone();
+    var box3d_center = app.bboxObject.getCenter().clone();
+
+    box3d_center.x = SideViewBoxCenter.x;
+    box3d_center.z = SideViewBoxCenter.z; 
+    box3d_size.x = SideViewBoxSize.x;
+    box3d_size.z = SideViewBoxSize.z; 
+    app.bboxObject.setFromCenterAndSize(box3d_center, box3d_size);
+    
+    //bboxObjecthelper.rotation.y = opt_box.angle;
+
+
+}
 
 // controller for resizing, rotating, translating, or hovering boxes and points
 function onDocumentMouseMove(event) {
@@ -582,7 +660,11 @@ function onDocumentMouseMove(event) {
                     selectedBox.innerRotate(app.selectedBox.angle - oldAngle);
                     selectedBox.add_timestamp();
 
-
+                    
+                    //mirror2DViewto3DviewBox();
+                    
+                    app.bbox_visualization();
+                    
                 } else if (isResizingTopView) {
 
 
@@ -606,6 +688,11 @@ function onDocumentMouseMove(event) {
 
 
 
+                    mirror2DViewto3DviewBox();
+
+                    
+                    //app.bbox_visualization();
+
                 } else if (isMovingTopView && selectedBox.initialcursor) {
 
                   
@@ -625,14 +712,14 @@ function onDocumentMouseMove(event) {
                             selectedBox.translate(cursorMain);
                             selectedBox.changeBoundingBoxColor(selected_color.clone());
                             selectedBox.add_timestamp();
-                    
-                            
+
+
+                            mirror2DViewto3DviewBox();
                         
 
                 }
 
 
-                app.bbox_visualization();
 
                 app.not_update_all_bbox = false;
 

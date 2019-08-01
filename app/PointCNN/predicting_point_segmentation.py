@@ -226,12 +226,21 @@ def main(FLAG):
     ground_removed = FLAG.ground_removed
     retrieve_whole_files = FLAG.retrieve_whole_files
     
-    
-    if(FLAGS.postfix == "denoise-weights"):
-        CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/kitti-only/denoise/0.99273694-iter--246000"
-    else: # (FLAGS.postfix == "normal-weights"):
-        CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/kitti-only/normal/0.98931193-iter--143000"
-    
+    if( "gta_" in data_filename):
+        
+        if(FLAGS.postfix == "denoise-weights"):
+            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/gta-only/denoise/0.9889917-iter--144000"
+        else: # (FLAGS.postfix == "normal-weights"):
+            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/gta-only/normal/0.9891319-iter--186000"
+
+        
+    else:
+
+        if(FLAGS.postfix == "denoise-weights"):
+            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/kitti-only/denoise/0.99273694-iter--246000"
+        else: # (FLAGS.postfix == "normal-weights"):
+            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/kitti-only/normal/0.98931193-iter--143000"
+
     max_point_num = 8192
 
     
@@ -262,6 +271,8 @@ def main(FLAG):
     sys.path.append(setting_path)
     setting = importlib.import_module(args_setting)
 
+    if( "gta_" in data_filename):
+        setting.num_class = 18
     sample_num = setting.sample_num
     batch_size = args_repeat_num * int ( math.ceil(max_point_num / sample_num) )
 
@@ -320,7 +331,7 @@ def main(FLAG):
 
             all_files = [fname] + [ _i.replace(source_path+"/", "")[0:-4] for _i in glob_files]
             
-        for fname in all_files:
+        for fname in tqdm(all_files):
             
             if(ground_removed == 1):
                 

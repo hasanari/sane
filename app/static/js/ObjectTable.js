@@ -212,10 +212,15 @@ function clearObjectTable() {
 
 function loadObjectTable() {
     if (app.cur_frame) {
+        $("#GoToNextFrame").remove();
         for (var i = 0; i < app.cur_frame.bounding_boxes.length; i++) {
             var box = app.cur_frame.bounding_boxes[i];
             addObjectRow(box);
         }
+        
+        $(OBJECT_TABLE).find('tbody').parent().append('<a href="#" id="GoToNextFrame" alt="Go to next frame!" style="position: absolute;right: 15px;/* bottom: 30px; */margin-top: 13px;" onclick="return gotonextFrame();"><i class="	fa fa-angle-double-right"></i>&nbsp;Next frame</a>')
+
+        $("#GoToNextFrame").focus();
     }
 }
 

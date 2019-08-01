@@ -190,9 +190,13 @@ class BoundingBoxPredictor():
 
         idx = self.frame_handler.drives[drivename].index(fname)
         next_fname = self.frame_handler.drives[drivename][idx+1]
+        
+        self.search_number = 50
+        self.treshold_point_annotation_error = 10
+        self.padding = 0.3
 
         ground_removed  = json_request["settingsControls"]["GroundRemoval"]
-        is_repaired_kalman_filter  = json_request["settingsControls"]["RepairedKalmanFilter"]
+        is_guided_tracking  = json_request["settingsControls"]["GuidedTracking"]
         
         car_points = get_pointcnn_labels(drivename+"/"+next_fname, json_request["settingsControls"], ground_removed=ground_removed)
         
@@ -221,7 +225,7 @@ class BoundingBoxPredictor():
             
             start = time.time()
 
-            new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc), is_repaired_kalman_filter) 
+            new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc), is_guided_tracking) 
             #print("\t time to predict frame ", bounding_box.box_id, time.time() - start)
             self.next_bounding_boxes.append( NextFrameBBOX(bounding_box.box_id, new_bbox[1], new_bbox[0]) )
             
@@ -231,10 +235,14 @@ class BoundingBoxPredictor():
 
                     
         #Clean overlapping boxes  
-        start = time.time()
-        self.fixed_overlapping_boxes(False)
-        
-        print("time to fixed_overlapping_boxes: ", time.time() - start)
+        if(is_guided_tracking):
+            
+            start = time.time()
+            try:
+                self.fixed_overlapping_boxes(False)
+            except:
+                pass
+            print("time to fixed_overlapping_boxes: ", time.time() - start)
 
 
         final_bounding_boxes = {}
@@ -268,7 +276,7 @@ class BoundingBoxPredictor():
             return self.fixed_overlapping_boxes(False)
         
         
-    def _predict_next_frame_bounding_box(self, frame, bounding_box, pc, is_repaired_kalman_filter):
+    def _predict_next_frame_bounding_box(self, frame, bounding_box, pc, is_guided_tracking):
         """Pure state to state linear movement Kalman Filter"""
         
         # Previous state initialization
@@ -298,9 +306,10 @@ class BoundingBoxPredictor():
         predicted_error =  np.matmul( np.matmul(frame.F_MATRIX, bounding_box.predicted_error) , np.transpose(frame.F_MATRIX) ) + frame.Q_MATRIX        
         bounding_box.center = x_hat[:2]
 
-        kalman_state = {}
-        kalman_state["predicted_error"] = np.diag(predicted_error).tolist()
-        kalman_state["predicted_state"] = x_hat.tolist()
+        box_state = {}
+        box_state["object_id"] = bounding_box.object_id
+        box_state["predicted_error"] = np.diag(predicted_error).tolist()
+        box_state["predicted_state"] = x_hat.tolist()
 
         
         # Updating new corners with x_hat (new prediction state) as center
@@ -311,10 +320,10 @@ class BoundingBoxPredictor():
         all_corners_set = {}
         all_corners_set[-1] = [corners, 0.0] # Init location
         
-        if(is_repaired_kalman_filter):        
+        if(is_guided_tracking):        
             corners, all_corners_set = self.guided_search_bbox_location(corners, pc, -1, all_corners_set, bounding_box.center)
    
-        return kalman_state, all_corners_set
+        return box_state, all_corners_set
         
         
     def guided_search_bbox_location(self, corners, points, max_points, all_corners_set, center_predict):
@@ -370,14 +379,14 @@ class BoundingBoxPredictor():
 
         
         #Search location with maximum number of contained points
-        search_number = 100 # 100*100 search space
+        search_number = self.search_number # 100*100 search space
 
         car_size = {"width": w, "length": l}
 
         _data_check = []
         
-        ys = np.linspace(new_bottom_left_corner[1]-(car_size["length"]/5), new_top_left_corner[1]+(car_size["length"]/5), search_number)
-        xs = np.linspace(new_bottom_left_corner[0]-(car_size["width"]/5), new_bottom_right_corner[0]+(car_size["width"]/5), search_number)
+        ys = np.linspace(new_bottom_left_corner[1]-(car_size["length"]*self.padding), new_top_left_corner[1]+(car_size["length"]*self.padding), search_number)
+        xs = np.linspace(new_bottom_left_corner[0]-(car_size["width"]*self.padding), new_bottom_right_corner[0]+(car_size["width"]*self.padding), search_number)
 
         for _y in ys:
             for _x in xs:
@@ -397,7 +406,7 @@ class BoundingBoxPredictor():
         
         _number_of_points = _data_check[_best_location,2]
         
-        error_annotation_treshold = 10
+        error_annotation_treshold = self.treshold_point_annotation_error
         
         # select max with error treshold
         idx_max_all = (_data_check[:,2] >= (_number_of_points - error_annotation_treshold) ).nonzero()[0] 

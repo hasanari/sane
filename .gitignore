@@ -7,3 +7,4 @@ app/static/images/
 app/PointCNN/output/
 pointcnn-models/
 *.pyc
+*.bin

@@ -7,10 +7,10 @@ def range_overlap(a_min, a_max, b_min, b_max):
 
         
 class NextFrameBBOX():
-	def __init__(self, box_id, back_tracking_boxes, kalman_state):
+	def __init__(self, box_id, back_tracking_boxes, box_state):
 		self.id = box_id
 		self.back_tracking_boxes = back_tracking_boxes
-		self.kalman_state = kalman_state
+		self.box_state = box_state
 		self.box_track_indices = sorted(back_tracking_boxes.keys())
 		self.current_box_track_index = len(self.box_track_indices)-1 # from very last
         
@@ -32,8 +32,9 @@ class NextFrameBBOX():
 	def get_bounding_box(self, bbox):
 
 		bbox["center_dist"] = self.get_center_dist()
-		bbox["predicted_state"] = self.kalman_state["predicted_state"] 
-		bbox["predicted_error"] = self.kalman_state["predicted_error"] 
+		bbox["object_id"] = self.box_state["object_id"] 
+		bbox["predicted_state"] = self.box_state["predicted_state"] 
+		bbox["predicted_error"] = self.box_state["predicted_error"] 
 		return bbox
 
 	def is_boxes_overlap(self, box_check):

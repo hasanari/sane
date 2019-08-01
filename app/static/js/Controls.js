@@ -20,7 +20,12 @@ var SettingsControls = function() {
     this.SearchRange = 4.0;
     this.NeighborsRadius = 8;
 
-    this.RepairedKalmanFilter = true;
+    this.GuidedTracking = true;
+    this.PaddingSize = 0.2;
+    this.AxisSlidingNumbers = 25;
+    this.TolerancePoint = 25;
+    
+    
     this.AnnotatorId = 'Guest';
     this.GroundRemoval = false;
     this.ShapeFitting = false;
@@ -124,6 +129,9 @@ settingsFolder.add(settingsControls, 'FullyAutomatedBbox').onChange(function() {
     app.frame_lock = false;
 
     updateCountBBOX();
+    
+    
+
 });
 
 
@@ -140,15 +148,15 @@ settingsFolder.add(settingsControls, 'FrameTracking').onChange(function() {
     enable_bounding_box_tracking = settingsControls['FrameTracking'];
     
     if (enable_bounding_box_tracking) {
-        $("#RepairedKalmanFilter").parent().parent().show();
+        $("#GuidedTracking").parent().parent().show();
     } else {
-        $("#RepairedKalmanFilter").parent().parent().hide();
+        $("#GuidedTracking").parent().parent().hide();
     }
     
 });
 
-RepairedKalmanFilter = settingsFolder.add(settingsControls, 'RepairedKalmanFilter');
-RepairedKalmanFilter.domElement.id = "RepairedKalmanFilter";
+GuidedTracking = settingsFolder.add(settingsControls, 'GuidedTracking');
+GuidedTracking.domElement.id = "GuidedTracking";
 
 
 
@@ -324,11 +332,34 @@ function onKeyDown2(event) {
             toggleControl(false);
 
         }
+        
+        var epsilon = 0.05;
         var KeyID = event.keyCode;
         switch (KeyID) {
             case 8: // backspace
                 deleteSelectedBox();
                 break;
+                
+                
+            case 37: // left key
+                moveBoxLocations(0, -epsilon, false);
+                break;
+                
+            case 38: // up key
+                moveBoxLocations(-epsilon, 0, false);
+                break;
+                
+            case 39: // right key
+                moveBoxLocations(0, epsilon, false);
+                break;
+                
+            case 40: // bottom key
+                moveBoxLocations(epsilon, 0, false);
+                break;
+                
+                
+                
+                
             case 46: // delete
                 deleteSelectedBox();
                 break;
@@ -367,12 +398,12 @@ function onKeyDown2(event) {
 // controller for releasing hotkeys
 function onKeyUp2(event) {
 
+    var epsilon = 0.05;
 
     if (isRecording) {
         var KeyID = event.keyCode;
 
-                toggleControl(true);
-        //console.log("KeyID", KeyID);
+        toggleControl(true);
         switch (KeyID) {
 
             case 32: // space key
@@ -380,7 +411,10 @@ function onKeyUp2(event) {
                 break;
                 
                 
-                
+           
+            case 82: // r key
+                toogle_color();
+                break;
                 
             case 65: // a key
                 autoDrawModeToggle(false);
@@ -422,9 +456,6 @@ function onKeyUp2(event) {
                 gotopreviousObject();
                 break;
 
-            case 82: // r key
-                toogle_color();
-                break;
                 
             case 84: // t key
                 recenter_objects();
@@ -446,25 +477,63 @@ function onKeyUp2(event) {
                 break;
         }
         
+        
         settingsFolder.updateDisplay();
     }
 
     if (event.ctrlKey) {
 
 
+        app.bbox_visualization();
 
         toggleControl(true);
 
     }
 }
 
+function is_all_objects_locked(){
+
+
+    if (app.cur_frame){
+         for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
+             if( app.cur_frame.bounding_boxes[i_box].islocked ==false ){
+                 
+                box = getBoxById(i_box);
+                if (box) {
+
+
+                    app.forceVisualize = true;
+                    selectedBox = box;
+                    app.bbox_visualization();
+
+                    app.forceVisualize = false;
+
+                }
+                 
+                 return false;
+             }
+             
+         }
+    }
+    return true;
+} 
+
 function gotonextFrame(){
     if (app.cur_frame){
+        
+         var frame_idx = app.get_frame_idx(app.cur_frame.fname);
+        if(is_all_objects_locked()){
 
-        var frame_idx = app.get_frame_idx(app.cur_frame.fname);
-        app.set_frame(app.fnames[frame_idx+1]);
-        unfocus_frame_row(getFrameRow(app.fnames[frame_idx]));
-        focus_frame_row(getFrameRow(app.fnames[frame_idx+1]));
+            $(OBJECT_TABLE).find('tbody tr').hide();
+            clearObjectTable();
+            app.set_frame(app.fnames[frame_idx+1]);
+            unfocus_frame_row(getFrameRow(app.fnames[frame_idx]));
+            focus_frame_row(getFrameRow(app.fnames[frame_idx+1]));
+
+        }else{
+            alert("Please locked all the boxes before go to the next frame!");
+            focus_frame_row(getFrameRow(app.fnames[frame_idx]));
+        }
     }
 }
 
@@ -489,6 +558,8 @@ function deleteFrameByFname(fname){
 
 function ReloadCurrentFrame(){
     if (app.cur_frame){
+        $(OBJECT_TABLE).find('tbody tr').hide();
+        clearObjectTable();
         app.bbox_visualization_clearance();
         
         
