@@ -524,11 +524,17 @@ function gotonextFrame(){
          var frame_idx = app.get_frame_idx(app.cur_frame.fname);
         if(is_all_objects_locked()){
 
-            $(OBJECT_TABLE).find('tbody tr').hide();
             clearObjectTable();
-            app.set_frame(app.fnames[frame_idx+1]);
+            
+            $("#objectIDs").html('<i class="fa fa-list"></i>&nbsp;&nbsp;IDs (0)');
+            app.bbox_visualization_clearance();
+
+
             unfocus_frame_row(getFrameRow(app.fnames[frame_idx]));
             focus_frame_row(getFrameRow(app.fnames[frame_idx+1]));
+            
+            app.set_frame(app.fnames[frame_idx+1]);
+       
 
         }else{
             alert("Please locked all the boxes before go to the next frame!");

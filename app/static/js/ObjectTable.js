@@ -34,19 +34,22 @@ function updateCountBBOX(){
 
 // method to add row to object id table
 function addObjectRow(box) {
-    $("{0} tbody".format(OBJECT_TABLE)).append(
-        "<tr><td class='id'><div class='object_row object_row_id'>{0}</td> \
-        <td><div class='object_row select_row' id='parent-obj-id-{1}'>{2}</div></td></tr>".format(box.id, box.id, options)
-    );
-    if (box.object_id) {
-        var row = getRow(box.id);
-        $(row).find("select").val(box.object_id);
+    if( $("#parent-obj-id-"+box.id).length == 0 ){
+
+        $("{0} tbody".format(OBJECT_TABLE)).append(
+            "<tr><td class='id'><div class='object_row object_row_id'>{0}</td> \
+            <td><div class='object_row select_row' id='parent-obj-id-{1}'>{2}</div></td></tr>".format(box.id, box.id, options)
+        );
+
+        if (box.object_id) {
+            var row = getRow(box.id);
+            $(row).find("select").val(box.object_id);
+        }
+        updateCountBBOX();
+
+
+        updateSelectOption(box);
     }
-    $("{0} tbody select".format(OBJECT_TABLE)).last().focus();
-    updateCountBBOX();
-
-
-    updateSelectOption(box);
 }
 
 function updateSelectOption(box){

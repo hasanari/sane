@@ -232,20 +232,12 @@ function init() {
            <div class="divTableBody">
 
 
-              <div class="divTableRow">
-                 <div class="divTableCell divNameCell">&nbsp;Object Type</div>
-                 <div id="summary-object-type" class="valueCell divTableCell">&nbsp;</div>
-              </div>
+            
               <div class="divTableRow">
                  <div class="divTableCell divNameCell">&nbsp;Size (w x h x l)</div>
                  <div id="summary-object-dimension" class="valueCell divTableCell">&nbsp;</div>
               </div>
-<!--
-              <div class="divTableRow">
-                 <div class="divTableCell divNameCell">&nbsp;</div>
-                 <div class="valueCell divTableCell">(width x length x height)</div>
-              </div>
--->
+
               <div class="divTableRow">
                  <div class="divTableCell divNameCell">&nbsp;Object Angle</div>
                  <div id="summary-object-angle" class="valueCell divTableCell">&nbsp;</div>
@@ -271,6 +263,8 @@ function init() {
 
               <div class="">
                  <div id="summary-object-id" style="font-size: 40px;position: absolute;left: -264px;bottom: -129px;color: white;" class="">&nbsp;</div>
+
+                 <div id="summary-object-type" style="font-size: 35px;position: absolute;left: -263px;bottom: -169px;color: white;" class="">&nbsp;</div>
               </div>
 
            </div>

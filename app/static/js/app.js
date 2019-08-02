@@ -459,7 +459,7 @@ function App() {
         console.log("fully_automated_bbox", fname);
         $("#loading-screen").show();
         
-       $("#title-container").text("Generating fully automated prediction...");
+       $("#title-container").text("Generates fully automated prediction...");
         
         $.ajax({
             context: this,
@@ -512,6 +512,9 @@ function App() {
                         }
                     }
                     if(box){
+                        
+                        
+                        addObjectRow(box);
                         
                         selectedBox = box;
                     }
@@ -622,10 +625,6 @@ function App() {
 
               
                     
-                    this.get_Mask_RCNN_Labels(fname);
-                    
-                    
-                    show(frame);
                     
                     prev_name = this.get_prev_fname(fname);
                     prev_prev_name = this.get_prev_fname(prev_name);
@@ -637,6 +636,11 @@ function App() {
                         }
                     }
 
+                    
+                    this.get_Mask_RCNN_Labels(fname);
+                    
+                    
+                    show(frame);
 
 
                 },
@@ -688,7 +692,7 @@ function App() {
         
         if (!next_frame.annotated) {
             next_frame.annotated = true;
-            $("#title-container").text("Generating tracking prediction...");
+            $("#title-container").text("Generates tracking prediction...");
             $.ajax({
                 context: this,
                 url: '/predictNextFrameBoundingBoxes',
@@ -759,6 +763,8 @@ function App() {
                     $("#container").show();
                     
                     $("#GoToNextFrame").focus();
+                    
+                    
 
                 },
                 error: function(error) {
@@ -932,6 +938,7 @@ function App() {
                         }
 
                         addBox(newbox);
+                        addObjectRow(newbox);
 
                         selectedBox = newbox;
                         selectRow(newbox.id);

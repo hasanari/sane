@@ -134,7 +134,7 @@ class BoundingBoxPredictor():
         
         points_class = pc[car_points]
         
-        max_distance_per_class =1.0
+        max_distance_per_class =0.8
         type_criterion =  1
         is_shape_fitting_required = False
                
@@ -143,7 +143,7 @@ class BoundingBoxPredictor():
 
         from sklearn.cluster import DBSCAN
         
-        clustering = DBSCAN(eps=max_distance_per_class, min_samples=50, metric='euclidean').fit(points_class[ : ,:2])
+        clustering = DBSCAN(eps=max_distance_per_class, min_samples=10, metric='euclidean').fit(points_class[ : ,:2])
         
         object_ids = clustering.labels_
         
@@ -166,15 +166,7 @@ class BoundingBoxPredictor():
 
             X = png_source
 
-            if( type_criterion == 0 ): 
-                _criterion = area_criterion
-            if( type_criterion == 1): 
-                   _criterion = closeness_criterion
-            elif(type_criterion == 3): 
-                   _criterion = variance_criterion
-
-
-            edges, corners = self.search_rectangle_fit(X, _criterion)
+            edges, corners = self.search_rectangle_fit(X, closeness_criterion)
 
 
             bounding_box, pointsInside, corners = self.corners_to_bounding_box(corners, np.copy(png_source), is_shape_fitting_required)
@@ -191,10 +183,18 @@ class BoundingBoxPredictor():
         idx = self.frame_handler.drives[drivename].index(fname)
         next_fname = self.frame_handler.drives[drivename][idx+1]
         
+        padding_idx = idx
+        
+        if(padding_idx > 0):
+            padding_idx = 1
+            
+        paddings = [1.0, 0.2]
         self.search_number = 50
         self.treshold_point_annotation_error = 10
-        self.padding = 0.3
+        self.padding = paddings[padding_idx]
 
+        print("self.padding", self.padding)
+        
         ground_removed  = json_request["settingsControls"]["GroundRemoval"]
         is_guided_tracking  = json_request["settingsControls"]["GuidedTracking"]
         
@@ -225,24 +225,26 @@ class BoundingBoxPredictor():
             
             start = time.time()
 
+            print("box id", bounding_box.box_id)
             new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc), is_guided_tracking) 
             #print("\t time to predict frame ", bounding_box.box_id, time.time() - start)
             self.next_bounding_boxes.append( NextFrameBBOX(bounding_box.box_id, new_bbox[1], new_bbox[0]) )
-            
+
 
             print("time to predict bounding box: ", bounding_box.box_id, time.time() - start)
 
 
                     
-        #Clean overlapping boxes  
-        if(is_guided_tracking):
-            
+
+        #Clean overlapping boxes 
+        if( is_guided_tracking):
+
             start = time.time()
             try:
                 self.fixed_overlapping_boxes(False)
             except:
                 pass
-            print("time to fixed_overlapping_boxes: ", time.time() - start)
+        print("time to fixed_overlapping_boxes: ", time.time() - start)
 
 
         final_bounding_boxes = {}
@@ -327,6 +329,8 @@ class BoundingBoxPredictor():
         
         
     def guided_search_bbox_location(self, corners, points, max_points, all_corners_set, center_predict):
+        
+        print("\tcorners", max_points, corners)
         
         pc = np.copy(points) #Backup original
         
@@ -480,6 +484,7 @@ class BoundingBoxPredictor():
             #print("guided_search_bbox_location", _number_of_points, corners.shape)
             return self.guided_search_bbox_location(corners, pc, _number_of_points, all_corners_set, center_predict)
         
+        print("_number_of_points < max_points ", _number_of_points , max_points )
         return corners, all_corners_set
            
            
