@@ -55,7 +55,7 @@ var selected_color = new THREE.Color(0x78F5FF);
 var hover_color = new THREE.Color(1, 0, 0);
 var default_color = new THREE.Color(0xffff00);
 var autoDrawMode = false;
-
+var isShiftPressed = false;
 init();
 
 
@@ -74,7 +74,21 @@ function init() {
     scene3.background = new THREE.Color(0x000000);
 
 
+    scene.__lights = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+    scene.__objectsAdded = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+    scene.__objectsRemoved = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
 
+    
+    scene2.__lights = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+    scene2.__objectsAdded = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+    scene2.__objectsRemoved = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+
+    
+    scene3.__lights = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+    scene3.__objectsAdded = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+    scene3.__objectsRemoved = { length: 0, push: function(){}, indexOf: function (){ return -1 }, splice: function(){} }
+
+    
 
     clock = new THREE.Clock();
 
@@ -258,7 +272,7 @@ function init() {
                 <div id="recenter-objects" style="min-width: 62px; position: absolute;right: -6px;top: 111px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-dot-circle-o" aria-hidden="true"></i>&nbsp;&nbsp;Re-Cen(T)er</a></div>
 
 
-                <div id="refresh-side-color" style="min-width: 62px; position: absolute;right: -6px;top: 139px;font-size: 12px;cursor: move;">&nbsp;<a href="#" ><i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;&nbsp;(R)e-Colors</a></div>
+                <div id="refresh-side-color" style="min-width: 69px;position: absolute;right: -6px;top: 139px;font-size: 12px;cursor: move;">&nbsp;<a href="#"><i class="fa fa-refresh" aria-hidden="true"></i>&nbsp;&nbsp;(R)e-Colors&nbsp;</a></div>
 
 
               <div class="">
@@ -541,7 +555,7 @@ function rotationBox(updateAngle){
 
 
         var oldAngle = app.selectedBox.angle;
-        app.selectedBox.rotate(app.selectedBox.angle - updateAngle );
+        app.selectedBox.innerRotate( updateAngle );
         app.selectedBox.add_timestamp();
 
         selectedBox.innerRotate(app.selectedBox.angle - oldAngle);
@@ -555,35 +569,51 @@ function moveBoxLocations(_x, _z, is_mouse_up){
 
       if(selectedBox && !controls.enabled && selectedBox.islocked == false){
           
+          
+        if(isShiftPressed){
+        
+            
+            var main_cursor = selectedBox.get_center().clone();
+            var current_cursor =  app.selectedBox.get_center().clone(); //new THREE.Vector2(0.0, 0.0);
+
+            current_cursor = new THREE.Vector3(current_cursor.x, 0.0, current_cursor.z);
+            main_cursor = new THREE.Vector3(main_cursor.x, 0.0, main_cursor.z);
+
+            app.selectedBox.cursor = current_cursor.clone(); //new THREE.Vector2(0.0, 0.0);
+            selectedBox.cursor = main_cursor.clone();
+
+            //console.log("main_cursor", main_cursor, current_cursor);
+            main_cursor.x = main_cursor.x + _z;
+            main_cursor.z = main_cursor.z + _x;
 
 
-        var main_cursor = selectedBox.get_center().clone();
-        var current_cursor =  app.selectedBox.get_center().clone(); //new THREE.Vector2(0.0, 0.0);
-
-        current_cursor = new THREE.Vector3(current_cursor.x, 0.0, current_cursor.z);
-        main_cursor = new THREE.Vector3(main_cursor.x, 0.0, main_cursor.z);
-
-        app.selectedBox.cursor = current_cursor.clone(); //new THREE.Vector2(0.0, 0.0);
-        selectedBox.cursor = main_cursor.clone();
-
-        //console.log("main_cursor", main_cursor, current_cursor);
-        main_cursor.x = main_cursor.x + _z;
-        main_cursor.z = main_cursor.z + _x;
+            current_cursor.x = current_cursor.x + _z;
+            current_cursor.z = current_cursor.z + _x;
 
 
-        current_cursor.x = current_cursor.x + _z;
-        current_cursor.z = current_cursor.z + _x;
+            //console.log("updated_main_cursor", main_cursor, current_cursor);
+
+            app.selectedBox.translate(current_cursor);
+            app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
+            app.selectedBox.add_timestamp();
+
+            selectedBox.translate(main_cursor);
+            selectedBox.changeBoundingBoxColor(selected_color.clone());
+            selectedBox.add_timestamp();
+        
+        }else{
 
 
-        //console.log("updated_main_cursor", main_cursor, current_cursor);
+            var angleUpdate = -(_z/5);
+            
+            app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
+            rotationBox(angleUpdate);
+            
+            
 
-        app.selectedBox.translate(current_cursor);
-        app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
-        app.selectedBox.add_timestamp();
+        }
+          
 
-        selectedBox.translate(main_cursor);
-        selectedBox.changeBoundingBoxColor(selected_color.clone());
-        selectedBox.add_timestamp();
 
         mirror2DViewto3DviewBox();
 
@@ -594,17 +624,22 @@ function moveBoxLocations(_x, _z, is_mouse_up){
 
 function mirror2DViewto3DviewBox(){
 
-    var SideViewBoxSize = app.selectedBox.boundingBox.getSize().clone();
-    var SideViewBoxCenter = app.selectedBox.boundingBox.getCenter().clone();
-    var box3d_size =  app.bboxObject.getSize().clone();
-    var box3d_center = app.bboxObject.getCenter().clone();
+    if(selectedBox && app.selectedBox){
+        var SideViewBoxSize = app.selectedBox.boundingBox.getSize().clone();
+        var SideViewBoxCenter = app.selectedBox.boundingBox.getCenter().clone();
+        var box3d_size =  app.bboxObject.getSize().clone();
+        var box3d_center = app.bboxObject.getCenter().clone();
 
-    box3d_center.x = SideViewBoxCenter.x;
-    box3d_center.z = SideViewBoxCenter.z; 
-    box3d_size.x = SideViewBoxSize.x;
-    box3d_size.z = SideViewBoxSize.z; 
-    app.bboxObject.setFromCenterAndSize(box3d_center, box3d_size);
-    
+        box3d_center.x = SideViewBoxCenter.x;
+        box3d_center.z = SideViewBoxCenter.z; 
+        box3d_size.x = SideViewBoxSize.x;
+        box3d_size.z = SideViewBoxSize.z; 
+        app.bboxObject.setFromCenterAndSize(box3d_center, box3d_size);
+        
+        app.bboxObjecthelper.rotation.y = app.selectedBox.angle;
+        
+        
+    }
     //bboxObjecthelper.rotation.y = opt_box.angle;
 
 
@@ -639,7 +674,6 @@ function onDocumentMouseMove(event) {
             
             cursor.y -= app.eps;
 
-            app.not_update_all_bbox = true;
             if (mouseDown && selectedBox.islocked==false) {
                 
                 
@@ -654,11 +688,6 @@ function onDocumentMouseMove(event) {
                     selectedBox.innerRotate(app.selectedBox.angle - oldAngle);
                     selectedBox.add_timestamp();
 
-                    
-                    //mirror2DViewto3DviewBox();
-                    
-                    app.bbox_visualization();
-                    
                 } else if (isResizingTopView) {
 
 
@@ -682,11 +711,6 @@ function onDocumentMouseMove(event) {
 
 
 
-                    mirror2DViewto3DviewBox();
-
-                    
-                    //app.bbox_visualization();
-
                 } else if (isMovingTopView && selectedBox.initialcursor) {
 
                   
@@ -708,22 +732,22 @@ function onDocumentMouseMove(event) {
                             selectedBox.add_timestamp();
 
 
-                            mirror2DViewto3DviewBox();
                         
 
                 }
 
+                
+                    
+                mirror2DViewto3DviewBox();
 
-
-                app.not_update_all_bbox = false;
-
+                
             } else {
 
-                app.bbox_visualization();
+                //app.bbox_visualization();
 
-                predictLabel(app.selectedBox);
+                //predictLabel(app.selectedBox);
 
-                app.not_update_all_bbox = false;
+                //app.not_update_all_bbox = false;
 
             }
             
@@ -745,6 +769,7 @@ function onDocumentMouseMove(event) {
         app.handleBoxMove();
 
 
+        mirror2DViewto3DviewBox();
 
         //var intersection = intersectWithCorner();
         
@@ -770,7 +795,8 @@ function onDocumentMouseMove(event) {
 
 
             highlightCorners();
-            app.bbox_visualization();
+            
+            
         }
 
     }
@@ -839,7 +865,6 @@ function onDocumentMouseUp(event) {
             predictBox = newBox;
 
             selectedBox = newBox;
-            app.bbox_visualization();
         }
         newBox = null;
         if (isResizing) {
@@ -875,6 +900,8 @@ function onDocumentMouseUp(event) {
 
         // if (app.move2D) {
         app.increment_rotate_camera_count(camera.rotation.z);
+        
+        app.bbox_visualization();
         // }
     }
 }
@@ -980,6 +1007,10 @@ function onDocumentMouseDown(event) {
                     isResizing = true;
                     resizeBox = box;
                     resizeBox.anchor = resizeBox.geometry.vertices[getOppositeCorner(closestIdx)].clone();
+                    app.selectedBox.anchor =  app.selectedBox.geometry.vertices[getOppositeCorner(closestIdx)].clone();
+                    
+                    resizeBox.initialcursor = resizeBox.geometry.vertices[closestIdx].clone();
+                    
                 }
             } else if (hoverBoxes.length == 1) {
                 isMoving = true;

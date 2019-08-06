@@ -328,13 +328,22 @@ function clickKeystrokeControl(event) {
 // controller for pressing hotkeys
 function onKeyDown2(event) {
     if (isRecording) {
+        
+        var epsilon = 0.05;
+        var KeyID = event.keyCode;
+        
+        
         if (event.ctrlKey) {
             toggleControl(false);
 
         }
         
-        var epsilon = 0.05;
-        var KeyID = event.keyCode;
+        if(KeyID == 16){ // shiftkey pressed
+            isShiftPressed = true;
+        }
+        
+        
+        //console.log("KeyID", KeyID);
         switch (KeyID) {
             case 8: // backspace
                 deleteSelectedBox();
@@ -398,11 +407,14 @@ function onKeyDown2(event) {
 // controller for releasing hotkeys
 function onKeyUp2(event) {
 
-    var epsilon = 0.05;
-
     if (isRecording) {
         var KeyID = event.keyCode;
 
+        
+        if(KeyID == 16){ // shiftkey pressed
+            isShiftPressed = false;
+        }
+        
         toggleControl(true);
         switch (KeyID) {
 
@@ -498,7 +510,7 @@ function is_all_objects_locked(){
          for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
              if( app.cur_frame.bounding_boxes[i_box].islocked ==false ){
                  
-                box = getBoxById(i_box);
+                box = getBoxById(app.cur_frame.bounding_boxes[i_box].id);
                 if (box) {
 
 
@@ -713,6 +725,7 @@ function toggleControl(b) {
     controls2.enabled = b;
     controls2.update();
 
+   
     if (app.isRedColor == false) {
         app.forceVisualize = true;
         app.bbox_visualization();
@@ -720,22 +733,8 @@ function toggleControl(b) {
         app.isRedColor = true;
     }
 
+    
 
-
-    return;
-    if (b) {
-
-        controls.enabled = b;
-        controls.update();
-
-
-
-    } else {
-        if (move2D) {
-            controls.enabled = b;
-            controls.update();
-        }
-    }
 }
 
 function clearTable() {

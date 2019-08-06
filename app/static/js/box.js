@@ -141,23 +141,7 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
         var center = getCenter(maxVector, minVector);
         var angle = getAngle(center, bottomCenter, cursor, topCenter);
 
-        // update angle of Box and bounding box
-        this.angle = this.angle + angle;
-        this.boxHelper.rotation.y = this.angle;
-
-        // rotate and update corner points
-        rotate(minVector, maxVector, -angle);
-        rotate(topLeft, bottomRight, -angle);
-        rotate(topCenter, bottomCenter, -angle);
-
-        this.geometry.vertices[0] = maxVector.clone();
-        this.geometry.vertices[1] = minVector.clone();
-        this.geometry.vertices[2] = topLeft.clone();
-        this.geometry.vertices[3] = bottomRight.clone();
-        this.geometry.vertices[4] = bottomCenter.clone();
-
-        // tell scene to update corner points
-        this.geometry.verticesNeedUpdate = true;
+        this.innerRotate(angle);
         
     }
     this.innerRotate = function(angle) {

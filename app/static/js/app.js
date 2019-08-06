@@ -54,7 +54,7 @@ function App() {
                     var drive = drive_keys[i];
                     for (var j = 0; j < this.drives[drive].length; j++) {
                         
-                        if(j > 1000){
+                        if(j > 100){
                             break;
                         }
                         var fname = pathJoin([drive, this.drives[drive][j].split('.')[0]]);
@@ -102,15 +102,19 @@ function App() {
         $("#panel").hide();
         $("#panel2").hide();
 
+   
         for (var i = scene2.children.length - 1; i >= 0; i--) {
 
+
             scene2.remove(scene2.children[i]);
+            
             delete scene2.children[i];
         }
-
+        
         for (var i = scene3.children.length - 1; i >= 0; i--) {
 
             scene3.remove(scene3.children[i]);
+            
             delete scene3.children[i];
         }
 
@@ -168,7 +172,12 @@ function App() {
 
                 return null;
             }
-
+            
+            // Clean Exisitng data
+            
+  
+            this.bbox_visualization_clearance();
+            
             $("#footer-top-view").show();
 
 
@@ -183,6 +192,10 @@ function App() {
             this.prev_viz.y = opt_box['center'].y;
             this.prev_viz.a = opt_box['angle'];
             this.prev_viz.islocked = opt_box['islocked'];
+            
+            
+            //instance_vr.container.remove() and instance_vr.element.remove(), then instance_vr = null;
+            
             
 
 
@@ -314,7 +327,7 @@ function App() {
 
             }
             
-            scene2.add(annote_pointcloud);
+            scene2.add(this.annote_pointcloudXZY);
             scene2.add(helper);
 
             $("#summary-object-id").text("["+opt_box['box_id']+"]");
@@ -337,7 +350,7 @@ function App() {
 
             
 
-            if (this.not_update_all_bbox == false) { // Updated all views!!
+            if (true && this.not_update_all_bbox == false) { // Updated all views!!
 
                 for (var i = scene3.children.length - 1; i >= 0; i--) {
                     scene3.remove(scene3.children[i]);
@@ -349,7 +362,7 @@ function App() {
                 controls3.enabled = false;
                 controls3.update();
 
-                scene3.add(annote_pointcloudXZ);
+                scene3.add(this.annote_pointcloudXZ);
 
                 opt_box['center'].x = 0.0;
                 opt_box['center'].y = 0.0;
@@ -369,7 +382,7 @@ function App() {
 
 
 
-
+                /*
                 var dotGeometry = new THREE.Geometry();
                 dotGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
                 var dotMaterial = new THREE.PointsMaterial({
@@ -378,6 +391,7 @@ function App() {
                 });
                 var dot = new THREE.Points(dotGeometry, dotMaterial);
                 scene3.add(dot);
+                */
 
 
 
@@ -443,22 +457,15 @@ function App() {
     
     
     this.fully_automated_bbox = function(fname) {
-        
-        if (!settingsControls.FullyAutomatedBbox) {
-            return;
-        }
-        
+
 
         var cur_idx = this.fnames.indexOf(fname);
-        if(app.cur_frame.annotated){
-            return;
-        }
-         
-        
+
         
         console.log("fully_automated_bbox", fname);
         $("#loading-screen").show();
         
+        $("#container").hide();
        $("#title-container").text("Generates fully automated prediction...");
         
         $.ajax({
@@ -472,9 +479,8 @@ function App() {
             contentType: 'application/json;charset=UTF-8',
             success: function(response) {
                 
-                if(app.cur_frame.annotated == false){
+                if(true || app.cur_frame.annotated == false){
                     
-                    deleteAllBoundingBox(false);
                     var res = response.split("\'").join("\"");
 
                     res = JSON.parse(res);
@@ -493,31 +499,35 @@ function App() {
                                 corner2,
                                 json_box['angle']);
                             
-                            if( isOverlapWithLockedBBOX(box) ){
+                            var is_box_deleted = false;
+                            for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
+                                existBox = app.cur_frame.bounding_boxes[i_box];
+                                if( existBox.boundingBox.intersectsBox(box.boundingBox) ) {
+
+                                    console.log("should be deleted", box.id);
+                                    is_box_deleted = true;
+                                    app.cur_frame.last_bbox_id = box.id;
+
+                                    scene.remove(box.points);
+                                    scene.remove(box.boxHelper);
+                                    delete box;
+                                    break;
+                                }
+                            }
+                                        
+                                        
+                            if(is_box_deleted == false){
                             
-                                app.cur_frame.last_bbox_id = box.id;
-                                
-                                scene.remove(box.points);
-                                scene.remove(box.boxHelper);
-                                delete box;
-
-
-
-                            }else{
-                            
-
                                 box.is_auto_generated = true;
                                 addBox(box);
+                                addObjectRow(box);
+
+                                selectedBox = box;
                             }
+
                         }
                     }
-                    if(box){
-                        
-                        
-                        addObjectRow(box);
-                        
-                        selectedBox = box;
-                    }
+
                 }
                 
                 
@@ -525,15 +535,19 @@ function App() {
                 
                 
                 $("#loading-screen").hide();
+                $("#container").show();
 
                 $("#title-container").text("");
-                
-                this.bbox_visualization();
+                gottoObject(1);
                 
 
                 settingsControls.FullyAutomatedBbox = false;
 
                 settingsFolder.updateDisplay();
+                
+                
+                $("#GoToNextFrame").focus();
+                    
 
                 
             },
@@ -544,6 +558,7 @@ function App() {
                 
                 $("#loading-screen").hide();
 
+                $("#container").show();
                 $("#title-container").text("");
             }
         });
@@ -753,14 +768,14 @@ function App() {
                     }
 
                     
-                    gottoObject(1);
+                    
                     
                     $("#title-container").text("");
+                    $("#loading-screen").hide();
+                    $("#container").show();
                     this.fully_automated_bbox(fname);
                     
                     
-                    $("#loading-screen").hide();
-                    $("#container").show();
                     
                     $("#GoToNextFrame").focus();
                     
@@ -804,6 +819,11 @@ function App() {
 
             selectedBox = rotatingBox;
             
+            app.selectedBox.innerRotate( -(app.selectedBox.angle-selectedBox.angle) );
+            app.selectedBox.add_timestamp();
+
+
+            
         }
     }
 
@@ -811,9 +831,11 @@ function App() {
         if (!isResizing) {
             return;
         }
+        
+        var cursor = null;
         if (mouseDown) {
-            var cursor = app.getCursor();
             // cursor's y coordinate nudged to make bounding box matrix invertible
+            var cursor = app.getCursor();
             cursor.y -= this.eps;
             resizeBox.resize(cursor);
             resizeBox.add_timestamp();
@@ -825,16 +847,51 @@ function App() {
 
         selectedBox = resizeBox;
 
-
         
+        if(cursor){
+
+            var cursorUpdate = resizeBox.changesOnLatestResize(cursor);
+            var cursorMain = app.selectedBox.cursor.clone(); 
+
+            cursorMain.x = cursorMain.x + (cursorUpdate.x * 1) //(panelMouse.height / window.innerHeight));
+            cursorMain.y = cursorMain.y + cursorUpdate.y ;
+            cursorMain.z = cursorMain.z + (cursorUpdate.z * 1) //  (panelMouse.width / window.innerWidth) )  ;
+
+            app.selectedBox.resize(cursorMain);
+            app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
+            app.selectedBox.add_timestamp();
+
+
+
+        }
+        
+
         // console.log(resizeBox);
     }
 
     this.handleBoxMove = function() {
         if (mouseDown && isMoving) {
+            
+            selectedBox.initialcursor = selectedBox.cursor.clone();
+            
             selectedBox.translate(this.getCursor());
             selectedBox.changeBoundingBoxColor(selected_color.clone());
             selectedBox.add_timestamp();
+            
+            
+            var cursorUpdate = selectedBox.changesOnLatestResize(this.getCursor());
+            var cursorMain = app.selectedBox.cursor.clone(); 
+            
+            
+            cursorMain.x = cursorMain.x + (cursorUpdate.x * 1) //(panelMouse.height / window.innerHeight));
+            cursorMain.y = cursorMain.y + cursorUpdate.y ;
+            cursorMain.z = cursorMain.z + (cursorUpdate.z * 1) //  (panelMouse.width / window.innerWidth) )  ;
+
+
+            app.selectedBox.translate(cursorMain);
+            app.selectedBox.changeBoundingBoxColor(new THREE.Color(0, 1, 1));
+            app.selectedBox.add_timestamp();
+                             
             
         }
     }

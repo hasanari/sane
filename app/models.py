@@ -4,11 +4,33 @@ def range_overlap(a_min, a_max, b_min, b_max):
 	'''Neither range is completely greater than the other
 	'''
 	return (a_min <= b_max) and (b_min <= a_max)
+        
+#https://codereview.stackexchange.com/questions/31352/overlapping-rectangles
+def is_overlap(corners_new, corners):
+	'''Overlapping rectangles overlap both horizontally & vertically
+	'''
 
+	r1 = {'left': np.min(corners[:,0]), 'right': np.max(corners[:,0]), 'bottom': np.min(corners[:,1]), 'top': np.max(corners[:,1]) }
+	r2 = {'left': np.min(corners_new[:,0]), 'right': np.max(corners_new[:,0]), 'bottom': np.min(corners_new[:,1]), 'top': np.max(corners_new[:,1]) }
+
+	return range_overlap(r1["left"], r1["right"], r2["left"], r2["right"]) and range_overlap(r1["bottom"], r1["top"], r2["bottom"], r2["top"])
+    
+def is_overlap_with_other_boxes(box_id, corner_checks, other_boxes):
+    
+	for bbox in other_boxes:
+		if(box_id != bbox.id):
+			corners = bbox.get_corners()
+			if is_overlap(corners, corner_checks):
+				return True
+	return False
+    
         
 class NextFrameBBOX():
-	def __init__(self, box_id, back_tracking_boxes, box_state):
+	def __init__(self, box_id, back_tracking_boxes, box_state, center_location, is_bbox_updated=False):
 		self.id = box_id
+		self.box_id = box_id
+		self.is_bbox_updated = is_bbox_updated
+		self.center = center_location
 		self.back_tracking_boxes = back_tracking_boxes
 		self.box_state = box_state
 		self.box_track_indices = sorted(back_tracking_boxes.keys())
@@ -18,6 +40,7 @@ class NextFrameBBOX():
 		self.current_box_track_index = self.current_box_track_index - 1
 		if(self.current_box_track_index < 0):
 			self.current_box_track_index = 0
+		self.is_bbox_updated = True
 		return self.current_box_track_index
     
 	def get_tracking_index(self):
@@ -38,20 +61,8 @@ class NextFrameBBOX():
 		return bbox
 
 	def is_boxes_overlap(self, box_check):
-		return self.overlap(self.get_corners(), box_check.get_corners())
+		return is_overlap(self.get_corners(), box_check.get_corners())
     
-    
-        
-	#https://codereview.stackexchange.com/questions/31352/overlapping-rectangles
-	def overlap(self, corners_new, corners):
-		'''Overlapping rectangles overlap both horizontally & vertically
-		'''
-
-		r1 = {'left': np.min(corners[:,0]), 'right': np.max(corners[:,0]), 'bottom': np.min(corners[:,1]), 'top': np.max(corners[:,1]) }
-		r2 = {'left': np.min(corners_new[:,0]), 'right': np.max(corners_new[:,0]), 'bottom': np.min(corners_new[:,1]), 'top': np.max(corners_new[:,1]) }
-
-		return range_overlap(r1["left"], r1["right"], r2["left"], r2["right"]) and range_overlap(r1["bottom"], r1["top"], r2["bottom"], r2["top"])
-
     
 
 class Frame():

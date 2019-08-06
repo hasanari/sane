@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import time
 import math
-from models import NextFrameBBOX
+from models import NextFrameBBOX, is_overlap_with_other_boxes, homogeneous_transformation
 
 from mask_rcnn import get_pointcnn_labels
 
@@ -30,6 +30,14 @@ def distances_points_to_line(p0, p1, p2):
     y2= np.ones(n) * (p2[1])
     
     return np.abs( ((y2-y1)*x0) - ((x2-x1)*y0) + (x2*y1) - (y2*x1) ) / np.sqrt( np.square(y2-y1) + np.square(x2-x1 )  )
+
+
+def filter_pointcloud(bbox, pointcloud):
+    theta = bbox["angle"]
+    transformed_pointcloud = homogeneous_transformation(pointcloud, bbox["center"], -theta)
+    indices = np.intersect1d(np.where(np.abs(transformed_pointcloud[:,0]) <= bbox["width"]/2)[0], 
+                             np.where(np.abs(transformed_pointcloud[:,1]) <= bbox["length"]/2)[0])
+    return np.delete(pointcloud, indices, axis=0), pointcloud[indices,:]
 
 
 def rotation_matrix(theta):
@@ -69,7 +77,8 @@ def rotate_origin_only_bulk(xy, radians):
 
     return np.array([xx, yy]).transpose()
 
-
+    
+    
 class BoundingBoxPredictor():
     def __init__(self, frame_handler):
         self.next_bounding_boxes = []
@@ -86,37 +95,6 @@ class BoundingBoxPredictor():
                     for drive in self.frame_handler.drives.keys()}
         self.poses = {drive: oxts2pose(self.oxts[drive], drive) for drive in tqdm(self.oxts.keys())}
 
-    def transform_coords(self, fname, x, inv=False):
-        if x.size == 2:
-            x = np.append(x, [0, 1])
-        if x.size == 3:
-            x = np.append(x, [1])
-        idx = self.frame_handler.frame_names.index(fname)
-        transform = self.poses[idx]
-        if inv:
-            transform = np.linalg.inv(transform)
-
-        return transform @ x
-
-    def get_velocities(self, prev_frame, cur_frame, ref_fname):
-        bounding_boxes = sorted(cur_frame.bounding_boxes, 
-                                key=lambda box: box.box_id)
-        velocities = {}
-        prev_frame_bounding_boxes = {box.box_id:box for box in prev_frame.bounding_boxes}
-        for i, box in enumerate(bounding_boxes):
-            box_id = box.box_id
-            #print(box_id)
-            cur_center = box.center
-
-            if box_id in prev_frame_bounding_boxes:
-                prev_center = prev_frame_bounding_boxes[box_id].center
-                cur_center_corr = self.transform_coords(cur_frame.fname, cur_center)
-                prev_center_corr = self.transform_coords(prev_frame.fname, prev_center)
-                velocities[box_id] = self.transform_coords(ref_fname, 
-                                                           cur_center - prev_center,
-                                                           inv=True)[:2]
-
-        return velocities
     
     
     def fully_automated_bbox(self, fname, json_request):
@@ -134,7 +112,7 @@ class BoundingBoxPredictor():
         
         points_class = pc[car_points]
         
-        max_distance_per_class =0.8
+        max_distance_per_class =1.5
         type_criterion =  1
         is_shape_fitting_required = False
                
@@ -143,7 +121,7 @@ class BoundingBoxPredictor():
 
         from sklearn.cluster import DBSCAN
         
-        clustering = DBSCAN(eps=max_distance_per_class, min_samples=10, metric='euclidean').fit(points_class[ : ,:2])
+        clustering = DBSCAN(eps=max_distance_per_class, min_samples=20, metric='euclidean').fit(points_class[ : ,:2])
         
         object_ids = clustering.labels_
         
@@ -175,25 +153,60 @@ class BoundingBoxPredictor():
                 
 
         return bounding_boxes_opt
+    
+    def transform_coords(self, fname, x, inv=False):
+        if x.size == 2:
+            x = np.append(x, [0, 1])
+        if x.size == 3:
+            x = np.append(x, [1])
+        idx = self.frame_handler.frame_names.index(fname)
+        transform = self.poses[idx]
+        if inv:
+            transform = np.linalg.inv(transform)
+
+        return transform @ x
+
+    def get_velocities(self, prev_frame, cur_frame, ref_fname):
+        bounding_boxes = sorted(cur_frame.bounding_boxes, 
+                                key=lambda box: box.box_id)
+        velocities = {}
+        prev_frame_bounding_boxes = {box.box_id:box for box in prev_frame.bounding_boxes}
+        for i, box in enumerate(bounding_boxes):
+            box_id = box.box_id
+            #print(box_id)
+            cur_center = box.center
+
+            if box_id in prev_frame_bounding_boxes:
+                prev_center = prev_frame_bounding_boxes[box_id].center
+                cur_center_corr = self.transform_coords(cur_frame.fname, cur_center)
+                prev_center_corr = self.transform_coords(prev_frame.fname, prev_center)
+                velocities[box_id] = self.transform_coords(ref_fname, 
+                                                           cur_center - prev_center,
+                                                           inv=True)[:2]
+
+        return velocities
         
         
     def predict_next_frame_bounding_boxes(self, frame, json_request):
+        
+        main_start = time.time()
+
         drivename, fname = frame.fname.split('.')[0].split("/")
 
         idx = self.frame_handler.drives[drivename].index(fname)
         next_fname = self.frame_handler.drives[drivename][idx+1]
         
+        paddings = [1.0]
         padding_idx = idx
         
-        if(padding_idx > 0):
-            padding_idx = 1
+        if(padding_idx > len(paddings)-1):
+            padding_idx = len(paddings)-1
             
-        paddings = [1.0, 0.2]
-        self.search_number = 50
-        self.treshold_point_annotation_error = 10
-        self.padding = paddings[padding_idx]
+        self.search_number = 25
+        self.treshold_point_annotation_error = 5
+        self.padding = 1.0 #paddings[padding_idx]
+        self.max_angle_changes_on_deg = 15
 
-        print("self.padding", self.padding)
         
         ground_removed  = json_request["settingsControls"]["GroundRemoval"]
         is_guided_tracking  = json_request["settingsControls"]["GuidedTracking"]
@@ -201,9 +214,9 @@ class BoundingBoxPredictor():
         car_points = get_pointcnn_labels(drivename+"/"+next_fname, json_request["settingsControls"], ground_removed=ground_removed)
         
         
-        next_pc = self.frame_handler.get_pointcloud(drivename, next_fname, dtype=float, ground_removed=ground_removed)
+        next_all_pc = self.frame_handler.get_pointcloud(drivename, next_fname, dtype=float, ground_removed=ground_removed)
         
-        next_pc = next_pc[car_points]
+        next_pc = np.copy(next_all_pc[car_points])
         
         
         #print(fname, ground_removed)
@@ -213,28 +226,24 @@ class BoundingBoxPredictor():
         centers = {box.box_id:box.center for box in bounding_boxes}
         velocities = {box_id:np.zeros(2) for box_id in centers.keys()}
         
-        """
-        next_pc[:,2] = 0
-        next_pc = next_pc[:,:3]
-        np.random.shuffle(next_pc)
-        next_pc_small = next_pc[::4]
-        
-        """
-        self.next_bounding_boxes = [] #Init bounding boxes
+
+        next_bounding_boxes = [] 
+        #Init bounding boxes
+        print("Init bounding boxes", self.padding, self.search_number, self.treshold_point_annotation_error )
         for bounding_box in bounding_boxes:
             
             start = time.time()
 
             print("box id", bounding_box.box_id)
+            
             new_bbox = self._predict_next_frame_bounding_box(frame, bounding_box, np.copy(next_pc), is_guided_tracking) 
-            #print("\t time to predict frame ", bounding_box.box_id, time.time() - start)
-            self.next_bounding_boxes.append( NextFrameBBOX(bounding_box.box_id, new_bbox[1], new_bbox[0]) )
-
+            next_bounding_boxes.append( NextFrameBBOX(bounding_box.box_id, new_bbox[1], new_bbox[0],  new_bbox[2]) )
 
             print("time to predict bounding box: ", bounding_box.box_id, time.time() - start)
+  
 
 
-                    
+        self.next_bounding_boxes = next_bounding_boxes
 
         #Clean overlapping boxes 
         if( is_guided_tracking):
@@ -247,18 +256,110 @@ class BoundingBoxPredictor():
         print("time to fixed_overlapping_boxes: ", time.time() - start)
 
 
+        
+        
+        self.padding = 0.25        
+        self.treshold_point_annotation_error = 1
+        print("Retrack bounding boxes", self.padding, self.search_number, self.treshold_point_annotation_error )
+        #Retrack box locations 
+        
+        is_bboxes_updated = np.ones([len((self.next_bounding_boxes)) ])
+        
+        is_bboxes_updated[:] = True
+            
+        if( is_guided_tracking):   
+            while( is_bboxes_updated.any() and self.padding > 0.01 ):               
+                
+        
+                #is_bboxes_updated[:] = True
+
+                updated_bounding_boxes = []          
+
+
+                self.search_number = int(self.padding * 100)
+                print("self.padding", start, self.padding)
+                
+                idx_box_status = 0
+                for bbox in self.next_bounding_boxes:
+
+                    start = time.time()
+                    print("box id", bbox.box_id)
+                    box_state = bbox.get_bounding_box({})   
+                    all_corners_set = {}
+                    all_corners_set[bbox.get_tracking_index()] = [bbox.get_corners(), bbox.get_center_dist()] # Init location
+
+                    if(is_bboxes_updated[idx_box_status]):
+                    
+
+                        _, all_corners_set = self.guided_search_bbox_location(bbox.get_corners(), np.copy(next_pc), bbox.get_tracking_index(), all_corners_set, bbox)             
+
+                    updated_bounding_boxes.append( NextFrameBBOX(bbox.box_id, all_corners_set, box_state, bbox.center) )
+
+                    print("time to predict bounding box: ", bbox.box_id, time.time() - start)
+
+                    
+                    idx_box_status = idx_box_status +1
+
+
+                print("Retrack box locations: ", time.time() - start)
+
+
+                self.next_bounding_boxes = updated_bounding_boxes
+
+                #Clean overlapping boxes 
+
+                start = time.time()
+                try:
+                    self.fixed_overlapping_boxes(False)
+                except:
+                    pass
+                print("time to fixed_overlapping_boxes: ", time.time() - start)
+                
+                idx_box_status = 0
+                for bbox_check in self.next_bounding_boxes:
+                    is_bboxes_updated[idx_box_status] = bbox_check.is_bbox_updated
+                    idx_box_status = idx_box_status +1
+                    
+                self.padding = self.padding * 0.5
+                
+                print("is_bboxes_updated",is_bboxes_updated,  is_bboxes_updated.any() )
+                 
+
+                    
         final_bounding_boxes = {}
+        criterion = closeness_criterion
+        
+        
+        start = time.time()
         for bbox in self.next_bounding_boxes:
             
             bbox_structure, _, _ = self.corners_to_bounding_box( bbox.get_corners(), None, False)
             final_bounding_boxes[str(bbox.id)]=bbox.get_bounding_box(bbox_structure)
+            """
+            #Update angle if required
+            _, pcInside = filter_pointcloud(bbox_structure, np.copy(next_all_pc[:,:2]) )
+            #print("pcInside", pcInside.shape)
+            _, new_corners = self.search_rectangle_fit(pcInside, criterion, False)
+            
+            
+            #print("new_corners", new_corners.shape, new_corners)
+            
+            new_bbox_structure, _, _ = self.corners_to_bounding_box(new_corners, None, False)
+            
+            old_angle = math.degrees(bbox_structure["angle"])
+            new_angle = math.degrees(new_bbox_structure["angle"])
+            
+            print(str(bbox.id), "new_angle", abs( old_angle - new_angle ), old_angle, new_angle)
         
+            if(abs( old_angle - new_angle )  < self.max_angle_changes_on_deg):
+                final_bounding_boxes[str(bbox.id)]["angle"] = new_bbox_structure["angle"]
+            """
 
+        print("Recalculate angle: ", time.time() - start)
+        print("Total time for predict frame: ", time.time() - main_start)
         return final_bounding_boxes
     
     
-
-
     
     def fixed_overlapping_boxes(self, is_overlap_exist):
 
@@ -320,18 +421,19 @@ class BoundingBoxPredictor():
         """BBOX guided greedy update with Point annotation"""
         
         all_corners_set = {}
-        all_corners_set[-1] = [corners, 0.0] # Init location
+        all_corners_set[0] = [corners, 0.0] # Init location
         
         if(is_guided_tracking):        
-            corners, all_corners_set = self.guided_search_bbox_location(corners, pc, -1, all_corners_set, bounding_box.center)
+            corners, all_corners_set = self.guided_search_bbox_location(corners, pc, 0, all_corners_set, bounding_box)
    
-        return box_state, all_corners_set
+        return box_state, all_corners_set, bounding_box.center
         
         
-    def guided_search_bbox_location(self, corners, points, max_points, all_corners_set, center_predict):
+    def guided_search_bbox_location(self, corners, points, max_points, all_corners_set, bounding_box):
         
-        print("\tcorners", max_points, corners)
+        print("\tcorners", max_points, corners[0])
         
+        center_predict = bounding_box.center
         pc = np.copy(points) #Backup original
         
         sorted_corners = sorted(corners, key=lambda x:x[1])
@@ -394,68 +496,109 @@ class BoundingBoxPredictor():
 
         for _y in ys:
             for _x in xs:
-                pointsInside = np.array(( 
-                points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
-                points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
-
-                pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
-
-                _data_check.append([_x, _y ,len(pointsInside), pointsInside])
-
-
-
-        _data_check = np.array( _data_check )
-
-        _best_location = np.argmax(_data_check[:,2] )
-        
-        _number_of_points = _data_check[_best_location,2]
-        
-        error_annotation_treshold = self.treshold_point_annotation_error
-        
-        # select max with error treshold
-        idx_max_all = (_data_check[:,2] >= (_number_of_points - error_annotation_treshold) ).nonzero()[0] 
-        
-        # If multiple locations have the same number of contained points 
-        if(len(idx_max_all) > 1): 
-            #Get bounding box location by minimazing all-point distance to 4 box-edges
-            rest = np.ones(len(idx_max_all) ) * 999999
-            
-            idx_loop_max = 0
-            for idx_bbox in idx_max_all:  
-                _x, _y, _, pointsInside = _data_check[idx_bbox,:]
-               
                 
-                p0 = np.copy( points[pointsInside, :])
-                c1 = np.array([_x, _y])
-                c2 = np.array([_x, _y+l])
-                c3 = np.array([_x+w, _y])
-                c4 = np.array([_x+w, _y+l])
-            
-                d1 = distances_points_to_line(p0, c1, c2)
-                d2 = distances_points_to_line(p0, c1, c3)
-                d3 = distances_points_to_line(p0, c3, c4)
-                d4 = distances_points_to_line(p0, c4, c2)
-            
-                dist_all = np.vstack([d1,d2,d3,d4])
-                dist_min = np.min(dist_all, axis=0)
+
+                top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner = self.rotate_corners( _x, _y, car_size, angle, _origin)
+
+
+                corner_checks= np.vstack([top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner])
+
                 
-                rest[idx_loop_max] = np.mean(dist_min)
-                idx_loop_max = idx_loop_max +1
+                if( is_overlap_with_other_boxes(bounding_box.box_id, corner_checks, self.next_bounding_boxes) == False ):
+                
+                    pointsInside = np.array(( 
+                    points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
+                    points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
+
+                    pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
+
+                    _data_check.append([_x, _y ,len(pointsInside), pointsInside])
+
+
+
+        if(len(_data_check)> 0):
+            _data_check = np.array( _data_check )
+
+            _best_location = np.argmax(_data_check[:,2] )
+
+            _number_of_points = _data_check[_best_location,2]
+
+            error_annotation_treshold = self.treshold_point_annotation_error
+
+            # select max with error treshold
+            idx_max_all = (_data_check[:,2] >= (_number_of_points - error_annotation_treshold) ).nonzero()[0] 
+
+            # If multiple locations have the same number of contained points 
+            if(len(idx_max_all) > 1): 
+                #Get bounding box location by minimazing all-point distance to 4 box-edges
+                rest = np.ones(len(idx_max_all) ) * 999999
+
+                dist_arg_min_storage = []
+                idx_loop_max = 0
+                for idx_bbox in idx_max_all:  
+                    _x, _y, _, pointsInside = _data_check[idx_bbox,:]
+
+
+                    p0 = np.copy( points[pointsInside, :])
+                    c1 = np.array([_x, _y])
+                    c2 = np.array([_x, _y+l])
+                    c3 = np.array([_x+w, _y])
+                    c4 = np.array([_x+w, _y+l])
+
+                    d1 = distances_points_to_line(p0, c1, c2)
+                    d2 = distances_points_to_line(p0, c1, c3)
+                    d3 = distances_points_to_line(p0, c3, c4)
+                    d4 = distances_points_to_line(p0, c4, c2)
+
+                    dist_all = np.vstack([d1,d2,d3,d4])
+                    dist_arg_min = np.argmin(dist_all, axis=0)
+
+
+                    dist_min = dist_all[dist_arg_min]
+
+                    rest[idx_loop_max] = np.mean(dist_min)
+                    dist_arg_min_storage.append(dist_arg_min)
+                    idx_loop_max = idx_loop_max +1
+
+                _min = np.argmin(rest) # get location with minimum point distances
+
+                print("dist_arg_min_storage", np.unique(dist_arg_min_storage[_min], return_counts=True) )
+                _best_location = idx_max_all[_min] # Update current best point location
+
+
+            _x, _y = _data_check[_best_location,:2]
+
+            pointsInside = np.array(( 
+            points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
+            points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
+
+            pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
+
+
+            top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner = self.rotate_corners( _x, _y, car_size, angle, _origin)
+
+
+            corners= np.vstack([top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner])
+
+            center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
+
+            dist = np.sqrt( np.sum( np.square( center - center_predict ) ))
+            if( _number_of_points > 10):
+                all_corners_set[_number_of_points] = [corners, dist]
+
+                if(_number_of_points > max_points):
+
+                    #print("guided_search_bbox_location", _number_of_points, corners.shape)
+                    return self.guided_search_bbox_location(corners, pc, _number_of_points, all_corners_set, bounding_box)
+
+            print("_number_of_points < max_points ", _number_of_points , max_points )
+        return corners, all_corners_set
            
-            _min = np.argmin(rest) # get location with minimum point distances
-            
-            _best_location = idx_max_all[_min] # Update current best point location
+           
+   
+    def rotate_corners(self, _x, _y, car_size, angle, _origin):
         
-            
-        _x, _y = _data_check[_best_location,:2]
-
-        pointsInside = np.array(( 
-        points[:, 0] >= _x ,  points[:, 0] <= _x +car_size["width"] ,
-        points[:, 1] >= _y ,  points[:, 1] <= _y +car_size["length"] ) )
-
-        pointsInside = np.all(pointsInside , axis=0).nonzero()[0]
-
-
+        
         # Recovering corner orientation, with angle rotation!
 
         top_left_corner = rotate_origin_only([_x, _y+car_size["length"]], -angle)
@@ -464,32 +607,15 @@ class BoundingBoxPredictor():
         bottom_left_corner = rotate_origin_only([_x,_y], -angle)
 
 
-
-
         # Recovering point location, with + _origin box location!
         top_left_corner=top_left_corner + _origin
         top_right_corner=top_right_corner +_origin
         bottom_right_corner=bottom_right_corner +_origin
         bottom_left_corner=bottom_left_corner + _origin
 
-        corners= np.vstack([top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner])
         
-        center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
+        return top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner
         
-        dist = np.sqrt( np.sum( np.square( center - center_predict ) ))
-        all_corners_set[_number_of_points] = [corners, dist]
-            
-        if(_number_of_points > max_points ):
-            
-            #print("guided_search_bbox_location", _number_of_points, corners.shape)
-            return self.guided_search_bbox_location(corners, pc, _number_of_points, all_corners_set, center_predict)
-        
-        print("_number_of_points < max_points ", _number_of_points , max_points )
-        return corners, all_corners_set
-           
-           
-   
-            
     def calibrate_orientation(self, top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner):
 
         center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
@@ -820,11 +946,12 @@ class BoundingBoxPredictor():
             return abs((p - s_hat) @ n)
         return model
             
-    def search_rectangle_fit(self, pc, criterion):
+    def search_rectangle_fit(self, pc, criterion, angle_only = False):
         pc = pc[:,:2]
         Q = dict()
         delta = np.pi / 180
-        for theta in np.linspace(0, np.pi/2 - delta, 90*5):
+            
+        for theta in np.linspace(0, np.pi/2 - delta, 90*2):
             e1 = np.array([np.cos(theta), np.sin(theta)])
             e2 = np.array([-np.sin(theta), np.cos(theta)])
             C1 = pc @ e1
@@ -832,6 +959,9 @@ class BoundingBoxPredictor():
             q = criterion(C1, C2)
             Q[theta] = q
         theta_star = max(Q.items(), key=lambda kv: kv[1])[0]
+        
+        if(angle_only):
+            return theta_star
         # print(theta_star)
         C1_star = pc @ np.array([np.cos(theta_star), np.sin(theta_star)])
         C2_star = pc @ np.array([-np.sin(theta_star), np.cos(theta_star)])
