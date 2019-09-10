@@ -414,8 +414,9 @@ def main(FLAG):
             
             #bounded_indices =   (all_label_pred == 2 ).nonzero()[0]
 
+            bounded_indices = all_label_pred
             
-            bounded_indices =   (all_label_pred > 0 ).nonzero()[0]
+            #bounded_indices =   (all_label_pred > 0 ).nonzero()[0]
 
 
             bounded_indices.tofile(output_location)

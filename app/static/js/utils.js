@@ -31,16 +31,24 @@ function update_point_size(){
         
     }
 }
+function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+}
+
 
 function get_point_inside_box(vertices, opt_box, mask_indices, surrounding_eps){
 
 
+    bounding_boxes_selected_no_epsilon = create_box_from_annot(opt_box, 0);
     bounding_boxes_selected = create_box_from_annot(opt_box, surrounding_eps);
 
-    
-    sidebar_STRIDE = 4
     pointsIn = []; 
     py =[];
+    py_mask =[];
     
     masked_indices =[];
     center = bounding_boxes_selected.get_center();
@@ -49,67 +57,54 @@ function get_point_inside_box(vertices, opt_box, mask_indices, surrounding_eps){
     var point_selected = 0;
     var k = 0;
     
-    /*
-    var pointFiltered = indexedPoints.nearest({x:center.x, z:center.y}, 10000, 5);
-    
-    console.log(center);
-    console.log(pointFiltered);
-    
-    for(var i=0; i< pointFiltered.length; i++ ){
-        
-        var v = new THREE.Vector3( pointFiltered[i][0].z, 0, pointFiltered[i][0].x );
-            
-        if (v && containsPoint(bounding_boxes_selected, v)) {
-            
-            
-            //console.log(pointFiltered[i][0], center,  pointFiltered[i][0].z - center.x ,  pointFiltered[i][0].x - center.z)
-            
-            
-            pointsIn.push( pointFiltered[i][0].x - center.z ); 
-            pointsIn.push( pointFiltered[i][0].z - center.x );  
-            pointsIn.push( pointFiltered[i][0].y ); 
-            pointsIn.push( 0 ); 
-            
-            py.push(pointFiltered[i][0].y);
-            
-            if( mask_indices.includes( pointFiltered[i][0].idx ) ){
-                masked_indices.push(point_selected);
-            }
-            
-            point_selected++;
-        }
-        
-        k++; 
-    }
-    console.log("pointsIn", pointsIn);
-    
-    return [pointsIn, py, masked_indices];
-    */
-    for ( var i = 0, l = vertices.length / sidebar_STRIDE; i < l; i ++ ) {
+    for ( var i = 0, l = vertices.length / DATA_STRIDE; i < l; i ++ ) {
         // creates new vector from a cluster and adds to geometry
-        var v = new THREE.Vector3( vertices[ sidebar_STRIDE * k + 1 ], 
-            0, vertices[ sidebar_STRIDE * k ] );
+        var v = new THREE.Vector3( vertices[ DATA_STRIDE * k + 1 ], 
+            0, vertices[ DATA_STRIDE * k ] );
         
         if (v && containsPoint(bounding_boxes_selected, v)) {
-            pointsIn.push(vertices[ sidebar_STRIDE * k + 0 ] - center.z ); 
-            pointsIn.push(vertices[ sidebar_STRIDE * k + 1 ] - center.x); 
-            pointsIn.push( vertices[ sidebar_STRIDE * k + 2 ] ); 
-            pointsIn.push( vertices[ sidebar_STRIDE * k + 3 ] ); 
+            pointsIn.push(vertices[ DATA_STRIDE * k + 0 ] - center.z ); 
+            pointsIn.push(vertices[ DATA_STRIDE * k + 1 ] - center.x); 
+            pointsIn.push( vertices[ DATA_STRIDE * k + 2 ] ); 
+            pointsIn.push( vertices[ DATA_STRIDE * k + 3 ] ); 
             
             
-            if( mask_indices.includes(k) ){
-                py.push( vertices[ sidebar_STRIDE * k + 2 ] );
-                masked_indices.push(point_selected);
+            if(Math.abs(vertices[ DATA_STRIDE * k + 0 ] - center.z ) < 3 &&
+            Math.abs(vertices[ DATA_STRIDE * k + 1 ] - center.x ) <  3 ){
+                
+                //py.push( vertices[ DATA_STRIDE * k + 2 ] );
+
             }
             
-            point_selected++;
+            if (v && containsPoint(bounding_boxes_selected_no_epsilon, v)) {
+                
+                py.push( vertices[ DATA_STRIDE * k + 2 ] );
+
+                if( mask_indices.includes(k) ){
+                    py_mask.push( vertices[ DATA_STRIDE * k + 2 ] );
+                    masked_indices.push(point_selected);
+                }
+            }
+            
+            point_selected++; 
         }
         
         k++; 
     }
     
+    //console.log("masked_indices.length", masked_indices.length, py.length, py_mask.length);
+    if(masked_indices.length > 10){
+        return [pointsIn, py_mask, masked_indices];
+    }else{
     
-    return [pointsIn, py, masked_indices];
+        //console.log("py", py.length);
+        py = shuffle(py);
+        py= py.slice(0, Math.floor(py.length * 0.9) )
+        
+        //console.log("new-py", py.length);
+        return [pointsIn, py, masked_indices];
+        
+    }
 }
 
 function calculateMean(arr) {

@@ -26,7 +26,10 @@ function Frame(fname, data) {
 				var box = this.bounding_boxes[i];
 				scene.add(box.points);
             	scene.add(box.boxHelper);
-            	box.changeBoundingBoxColor(default_color);
+                if(box.bbox3d_helper){
+                    scene.add(box.bbox3d_helper);
+                }
+                box.changeBoundingBoxColor(default_color);
             	container.appendChild(box.text_label.element);
 			}
 	};
@@ -49,6 +52,47 @@ function Frame(fname, data) {
             	scene.remove(box.boxHelper);
             	box.text_label.element.remove();
 			}
+        
+        /*
+        for (var i = scene.children.length - 1; i >= 0; i--) {
+
+            //console.log("scene3.children[i].geometry ", scene3.children[i] );
+            
+            if(scene.children[i]){
+                
+              
+                     
+                if( scene.children[i].geometry &&  typeof scene.children[i].geometry.dispose === 'function' ){
+                   
+                    if( scene.children[i].material.color.r == 1 && scene.children[i].material.color.g == 1 && scene.children[i].material.color.b == 1){
+                         console.log(scene.children[i]);
+                    
+                        if(scene.children[i].text_label && scene.children[i].text_label.element){
+                        
+                                scene.children[i].text_label.element.remove();
+
+                                scene.children[i].geometry.dispose();            
+
+                                scene.children[i].material.dispose();     
+                            
+                                scene.remove(scene.children[i]);
+                            delete scene.children[i];
+                        }
+                       
+                        
+                    }
+                }
+                
+                
+            }
+            
+
+            //scene3.children[i] = undefined;//or
+
+            
+        }
+        */
+        
 	};
 
 	this.is_annotated = function() {

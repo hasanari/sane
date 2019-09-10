@@ -1,12 +1,21 @@
 var options = `<select>
+    <option value="airplane">--Airplane--</option>
+    <option value="animal">--Animal--</option>
+    <option value="boat">--Boat--</option>
+    <option value="bus">--Bus--</option>
     <option value="car">--Car--</option>
-    <option value="van">--Van--</option>
-    <option value="truck">--Truck--</option>
-    <option value="pedestrian">--Pedestrian--</option>
     <option value="cyclist">--Cyclist--</option>
-    <option value="sitter">--Sitter--</option>
-    <option value="tram">--Tram--</option>
     <option value="misc">--Misc--</option>
+    <option value="motorbike">--Motorbike--</option>
+    <option value="pedestrian">--Pedestrian--</option>
+    <option value="person_sitting">--Person Sitting--</option>
+    <option value="railed">--Railed--</option>
+    <option value="tram">--Tram--</option>
+    <option value="trailer">--Trailer--</option>
+    <option value="truck">--Truck--</option>
+    <option value="utility">--Utility--</option>
+    <option value="van">--Van--</option>
+    <option value="dontcare">--Dont Care--</option>
     /select`;
 
 

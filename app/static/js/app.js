@@ -6,15 +6,18 @@ function App() {
     this.annotatorID='Guest';
     this.selectedBoxWidth=0;
     this.selectedBox;
+    this.selected_box_id = -99;
     this.selectedBox3DView;
     this.forceVisualize = false;
     this.isRedColor = true;
     this.isLiveRecolors = false;
+    this.z_dot = null;
     this.annote_pointcloudXZ;
     this.annote_pointcloudXZY;
     this.masked_indices;
     this.bboxObject;
     this.opt_box;
+    this.py;
     this.fnames = [];
     this.tempBBOX = [];
     this.not_update_all_bbox = false;
@@ -54,7 +57,7 @@ function App() {
                     var drive = drive_keys[i];
                     for (var j = 0; j < this.drives[drive].length; j++) {
                         
-                        if(j > 100){
+                        if(j > 9){
                             break;
                         }
                         var fname = pathJoin([drive, this.drives[drive][j].split('.')[0]]);
@@ -105,16 +108,45 @@ function App() {
    
         for (var i = scene2.children.length - 1; i >= 0; i--) {
 
+            //console.log("scene2.children[i].geometry ", scene2.children[i] );
 
+            if(scene2.children[i]){
+                if( scene2.children[i].geometry && typeof scene2.children[i].geometry.dispose === 'function' ){
+                    //console.log("delete scene2.children[i].geometry");
+                    scene2.children[i].geometry.dispose();            
+                }
+                if(  scene2.children[i].material && typeof scene2.children[i].material.dispose === 'function' ){
+                    //console.log("delete scene2.children[i].material");
+                    scene2.children[i].material.dispose();            
+                }
+            }
+            
             scene2.remove(scene2.children[i]);
+
+            //scene2.children[i] = undefined;//or
             
             delete scene2.children[i];
         }
         
         for (var i = scene3.children.length - 1; i >= 0; i--) {
 
-            scene3.remove(scene3.children[i]);
+            //console.log("scene3.children[i].geometry ", scene3.children[i] );
             
+            if(scene3.children[i]){
+                if(   scene3.children[i].geometry &&  typeof scene3.children[i].geometry.dispose === 'function' ){
+                    //console.log("delete scene3.children[i].geometry");
+                    scene3.children[i].geometry.dispose();            
+                }
+                if(  scene3.children[i].material &&  typeof scene3.children[i].material.dispose === 'function' ){
+                    //console.log("delete scene3.children[i].material");
+                    scene3.children[i].material.dispose();            
+                }
+            }
+            
+            scene3.remove(scene3.children[i]);
+
+            //scene3.children[i] = undefined;//or
+
             delete scene3.children[i];
         }
 
@@ -125,7 +157,7 @@ function App() {
             }
         }
 
-        animate2();
+        //animate2();
 
     };
 
@@ -178,6 +210,10 @@ function App() {
   
             this.bbox_visualization_clearance();
             
+            selectedBox.boxHelper.material.color.set(hover_color.clone());
+            
+            $("#title-container").text("");
+            
             $("#footer-top-view").show();
 
 
@@ -193,7 +229,6 @@ function App() {
             this.prev_viz.a = opt_box['angle'];
             this.prev_viz.islocked = opt_box['islocked'];
             
-            
             //instance_vr.container.remove() and instance_vr.element.remove(), then instance_vr = null;
             
             
@@ -205,6 +240,7 @@ function App() {
             var masked_indices = _rest[2];
             var annote_pointcloud = generateNewPointCloud(data, COLOR_RED, false);
 
+            this.py = py;
             for (var j = 0; j < masked_indices.length; j++) {
                 annote_pointcloud.geometry.colors[masked_indices[j]] = new THREE.Color(0x00ff6b);
 
@@ -244,10 +280,17 @@ function App() {
                 }
             }
             
+            /*
             if( py.length > 10){            
                 var max_y = Math.max(...py);
                 var min_y = Math.min(...py);
             }
+            
+            */
+            var max_y = Math.max(...py);
+            var min_y = Math.min(...py);
+
+            //min_y = Math.max(min_y, -2.0); 
 
             //console.log(max_y, min_y);
             
@@ -267,11 +310,18 @@ function App() {
             bbox_max.z = bbox_max.z - center.x;
             bbox_max.x = bbox_max.x - center.y;
 
-            bbox_min.y = min_y- 0.2; // Value normalized from Denoise PointCNN  GROUND_TO_Z = 0.2
+            if(masked_indices.length > 10){ 
+                bbox_min.y = min_y - 0.2; // Value normalized from Denoise PointCNN  GROUND_TO_Z = 0.2
+            
+            }else{
+                bbox_min.y = min_y;
+            }
+            
             bbox_min.z = bbox_min.z - center.x;
             bbox_min.x = bbox_min.x - center.y;
 
      
+            /*
 
             if (selectedBox.height == 0) {
 
@@ -280,10 +330,18 @@ function App() {
             } else {
                 car_height = selectedBox.height;
             }
+            */
 
-
-
-
+           var car_height = Math.min(Math.abs(bbox_max.y - bbox_min.y), 5);
+           selectedBox.height = car_height;
+           if(selectedBox.bbox3d){
+               selectedBox.bbox3d.max.y = bbox_min.y + car_height;
+               selectedBox.estimate_height();
+           }
+           selectedBox.y_max =  bbox_min.y + car_height;
+           selectedBox.estimate_height( app.move2D);
+            
+            
             var bbox = new THREE.Box3();
             bbox.setFromCenterAndSize(new THREE.Vector3(0, bbox_min.y + (car_height / 2) , 0), new THREE.Vector3(opt_box.length, car_height, opt_box.width));
 
@@ -306,24 +364,38 @@ function App() {
 
             
             if(false && opt_box['islocked'] == false){  
-                var bbox3DotGeometry = new THREE.Geometry();
-
-                this.bbox3_min = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y, this.bboxObject.min.z);
-                this.bbox3_max = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y + car_height, this.bboxObject.min.z);
-
                 
-                bbox3DotGeometry.vertices.push(this.bbox3_max);
-                bbox3DotGeometry.vertices.push( this.bbox3_min );
+                if(app.z_dot){                    
+                    scene2.remove(app.z_dot);
+                    
+                    app.z_dot.geometry.vertices[0] = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y, this.bboxObject.min.z);
+                    app.z_dot.geometry.vertices[1] =  new THREE.Vector3(this.bboxObject.min.x, bbox_min.y + car_height, this.bboxObject.min.z);
 
-                //bbox3DotGeometry.vertices.push(new THREE.Vector3(0, bbox_min.y + car_height / 2, 0));
+                    app.z_dot.geometry.verticesNeedUpdate=true;
+                    
+                }else{
 
-                var dotMaterial = new THREE.PointsMaterial({
-                    size: 8,
-                    sizeAttenuation: false
-                });
-                dotMaterial.color = COLOR_RED.clone();
-                var z_dot = new THREE.Points(bbox3DotGeometry, dotMaterial);
-                scene2.add(z_dot);
+                    var bbox3DotGeometry = new THREE.Geometry();
+
+                    this.bbox3_min = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y, this.bboxObject.min.z);
+                    this.bbox3_max = new THREE.Vector3(this.bboxObject.min.x, bbox_min.y + car_height, this.bboxObject.min.z);
+
+
+                    bbox3DotGeometry.vertices.push(this.bbox3_max);
+                    bbox3DotGeometry.vertices.push( this.bbox3_min );
+
+                    //bbox3DotGeometry.vertices.push(new THREE.Vector3(0, bbox_min.y + car_height / 2, 0));
+
+                    var dotMaterial = new THREE.PointsMaterial({
+                        size: 8,
+                        sizeAttenuation: false
+                    });
+                    dotMaterial.color = COLOR_RED.clone();
+                    var z_dot = new THREE.Points(bbox3DotGeometry, dotMaterial);
+                    this.z_dot = z_dot;
+                
+                }
+                
 
             }
             
@@ -348,75 +420,76 @@ function App() {
             
              $("#panel2").show();
 
-            
-
-            if (true && this.not_update_all_bbox == false) { // Updated all views!!
-
-                for (var i = scene3.children.length - 1; i >= 0; i--) {
-                    scene3.remove(scene3.children[i]);
-                    delete scene3.children[i];
-                }
-
-                camera3.position.set(0, bbox_max.z + 3, bbox_min.z - 3);
-
-                controls3.enabled = false;
-                controls3.update();
-
-                scene3.add(this.annote_pointcloudXZ);
-
-                opt_box['center'].x = 0.0;
-                opt_box['center'].y = 0.0;
-
-                bounding_boxes_selected = create_box_from_annot(opt_box, 0.0);
-
-                if(bounding_boxes_selected == null ){
-                    return;
-                }
-
-                if(opt_box['islocked'] == false){                    
-                    scene3.add(bounding_boxes_selected.points);
-                }
-
-                bounding_boxes_selected.boxHelper.rotation.y = opt_box.angle;
-                scene3.add(bounding_boxes_selected.boxHelper);
 
 
-
-                /*
-                var dotGeometry = new THREE.Geometry();
-                dotGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
-                var dotMaterial = new THREE.PointsMaterial({
-                    size: 5,
-                    sizeAttenuation: false
-                });
-                var dot = new THREE.Points(dotGeometry, dotMaterial);
-                scene3.add(dot);
-                */
-
-
-
-                var size = 500;
-                var divisions = 500;
-
-
-                if (settingsControls["ShowGrid"]) {
-
-
-                    var grid_helper = new THREE.GridHelper(size, divisions);
-                    grid_helper.name = "grid_helper"
-                    scene3.add(grid_helper);
-                }
-
-                this.selectedBox = bounding_boxes_selected;
-                
-                
-                animate2();
-                camera3.rotateZ(3.14);
-            }else{
-                
-                animate2();
+            for (var i = scene3.children.length - 1; i >= 0; i--) {
+                scene3.remove(scene3.children[i]);
+                delete scene3.children[i];
             }
 
+            //camera3.position.set(0, bbox_max.z + 3, bbox_min.z - 3);
+
+            controls3.target.x = 0;
+            controls3.target.y = bbox_max.z + 2;
+            controls3.target.z = 0;
+            
+            controls3.enabled = false;
+            controls3.update();
+            if(this.move2D){
+                camera3.rotation.setFromVector3(camera.rotation.clone());  
+            }
+            
+            scene3.add(this.annote_pointcloudXZ);
+
+            opt_box['center'].x = 0.0;
+            opt_box['center'].y = 0.0;
+
+            bounding_boxes_selected = create_box_from_annot(opt_box, 0.0);
+
+            if(bounding_boxes_selected == null ){
+                return;
+            }
+
+            if(opt_box['islocked'] == false){                    
+                scene3.add(bounding_boxes_selected.points);
+            }
+
+            bounding_boxes_selected.boxHelper.rotation.y = opt_box.angle;
+            scene3.add(bounding_boxes_selected.boxHelper);
+
+
+
+            /*
+            var dotGeometry = new THREE.Geometry();
+            dotGeometry.vertices.push(new THREE.Vector3(0, 0, 0));
+            var dotMaterial = new THREE.PointsMaterial({
+                size: 5,
+                sizeAttenuation: false
+            });
+            var dot = new THREE.Points(dotGeometry, dotMaterial);
+            scene3.add(dot);
+            */
+
+
+
+            var size = 500;
+            var divisions = 500;
+
+
+            if (settingsControls["ShowGrid"]) {
+
+
+                var grid_helper = new THREE.GridHelper(size, divisions);
+                grid_helper.name = "grid_helper"
+                scene3.add(grid_helper);
+            }
+
+            this.selectedBox = bounding_boxes_selected;
+
+
+            
+            
+            var centerPoint = selectedBox.get_center();
             
             var __width = Math.max(opt_box.width, opt_box.length);
             
@@ -431,17 +504,7 @@ function App() {
                 camera2.updateProjectionMatrix();
                 
             }
-            /*
-
-            if( ( camera3.position.y <  6  ) &&  this.selectedBoxWidth  != Math.round( camera3.position.y /0.005 ) ){
-                
-                this.selectedBoxWidth = Math.round( camera3.position.y / 0.005 );
-                camera3.position.y = 6; 
-                camera3.position.x = 0;
-                camera3.position.z = 0;
-            }
-            */
-
+            
             
             $("#panel3").show();
             $("#panel").show();
@@ -449,7 +512,46 @@ function App() {
                     
             
             app.isRedColor = true;
+            
+            animate2();
+            //camera3.position.y = 6;
+            /*
+            if(this.selected_box_id != selectedBox.id){
+
+                controls.target.x = centerPoint.y;
+                controls.target.z = centerPoint.x;
+                camera.position.y = 40;
+                controls.update();
+                camera3.position.y = 6;
+                this.selected_box_id  = selectedBox.id;
+            
+            }
+ 
+            if(camera.rotation._z * camera3.rotation._z < 0 || 
+               camera.rotation._y * camera3.rotation._y < 0 ||
+               camera.rotation._x * camera3.rotation._x < 0 ){ // check if camera changing
+                
+            
+                //console.log("camera changing!", camera.rotation, camera3.rotation);
+            }
+            
+             if(app.z_dot && opt_box['islocked'] == false){ 
+                 scene2.add(app.z_dot);
+             }else{
+                 selectedBox.updateHeightCorners();
+             }
             // recolor_evaluation();
+              
+                
+            */
+
+            //if(this.move2D){
+            camera3.rotation.setFromVector3(camera.rotation.clone());  
+            controls3.update()
+            camera3.rotation.setFromVector3(camera.rotation.clone());  
+
+            //}  
+              
         } else {
 
         }
@@ -458,6 +560,15 @@ function App() {
     
     this.fully_automated_bbox = function(fname) {
 
+        if(settingsControls["FullyAutomatedBbox"] == false){
+            
+            $("#loading-screen").hide();
+            $("#container").show();
+
+            selectedBox =null;
+            gottoObject(1);
+            return null;
+        }
 
         var cur_idx = this.fnames.indexOf(fname);
 
@@ -498,13 +609,14 @@ function App() {
                             var box = createAndDrawBox(corner1,
                                 corner2,
                                 json_box['angle']);
+                            box.object_id = json_box['object_id'];
                             
                             var is_box_deleted = false;
                             for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
                                 existBox = app.cur_frame.bounding_boxes[i_box];
                                 if( existBox.boundingBox.intersectsBox(box.boundingBox) ) {
 
-                                    console.log("should be deleted", box.id);
+                                    //console.log("should be deleted", box.id);
                                     is_box_deleted = true;
                                     app.cur_frame.last_bbox_id = box.id;
 
@@ -538,12 +650,13 @@ function App() {
                 $("#container").show();
 
                 $("#title-container").text("");
+                selectedBox =null;
                 gottoObject(1);
                 
 
-                settingsControls.FullyAutomatedBbox = false;
+                //settingsControls.FullyAutomatedBbox = false;
 
-                settingsFolder.updateDisplay();
+                //settingsFolder.updateDisplay();
                 
                 
                 $("#GoToNextFrame").focus();
@@ -605,7 +718,7 @@ function App() {
 
         } else {
             $("#ReloadCurrentFrame").hide();
-            $("#title-container").text("Retreiving frame data...");
+            $("#title-container").text("Retrieving frame data...");
             $.ajax({
                 context: this,
                 url: '/getFramePointCloud',
@@ -619,13 +732,18 @@ function App() {
                     var data, res, annotation, bounding_boxes_json, bounding_boxes, box;
                     res = response.split('?');
                     data = res[0].split(',').map(x => parseFloat(x));
+                    
                     var frame = new Frame(fname, data);
 
                     if ( res.length > 1 && res[1].length > 0) {
 
                         annotation = parsePythonJSON(res[1]);
                         bounding_boxes_json = Object.values(annotation["frame"]["bounding_boxes"]);
+                        //console.log("__res", annotation["frame"]["bounding_boxes"], annotation, bounding_boxes_json);
                         bounding_boxes = Box.parseJSON(bounding_boxes_json);
+                        
+                        
+                        
                         for (var i = 0; i < bounding_boxes.length; i++) {
                             box = bounding_boxes[i];
                             frame.bounding_boxes.push(box);
@@ -645,9 +763,9 @@ function App() {
                     prev_prev_name = this.get_prev_fname(prev_name);
                     
                     for (var key in this.frames) { // Clear previous frames
-                        //if( key != fname && key != prev_name  && key != prev_prev_name ){
-                        if( key != fname && key != prev_name ){    
-                            deleteFrameByFname(key);
+                        if( key != fname && key != prev_name  ){
+                        //if( key != fname && key != prev_name ){    
+                            //deleteFrameByFname(key);
                         }
                     }
 
@@ -696,6 +814,7 @@ function App() {
             return;
         }
 
+        
         //console.log("predict_next_frame_bounding_box", fname);
         
         var next_frame = this.frames[this.fnames[cur_idx + 1]];
@@ -719,13 +838,17 @@ function App() {
                 contentType: 'application/json;charset=UTF-8',
                 success: function(response) {
                     
-                    $("#title-container").text("Writing  prediction...");
+                    var total_time = "";
+                    $("#title-container").text("Recovers prediction...");
                     //console.log("response", response);
                     if( response == "error"){
                         
                         //next_frame.annotated = false;
                     }else{
-                        var res = response.split("\'").join("\"");
+                        response_data = response.split('?');
+                        var total_time = response_data[1];
+                        
+                        var res = response_data[0].split("\'").join("\"");
                         res = JSON.parse(res);
                         for (var box_id in res) {
                             if (res.hasOwnProperty(box_id)) {
@@ -745,6 +868,13 @@ function App() {
                                  box.predicted_error =  json_box['predicted_error'];
                                  box.object_id =  json_box['object_id'];
                                  box.id =  box_id;
+                                
+
+                                if (json_box.hasOwnProperty('tracking_idx')) {
+                                    box.tracking_idx =  json_box['tracking_idx'];
+                                }
+
+
                                  
                                 if( isOverlapWithLockedBBOX(box) ){
 
@@ -770,16 +900,21 @@ function App() {
                     
                     
                     
-                    $("#title-container").text("");
                     $("#loading-screen").hide();
                     $("#container").show();
+                    
+ 
                     this.fully_automated_bbox(fname);
                     
-                    
-                    
+                    selectedBox =null;
+                    gottoObject(1);
                     $("#GoToNextFrame").focus();
-                    
-                    
+
+
+                    if(total_time != ""){
+
+                        $("#title-container").text("Total time for tracking: "+total_time+" s.");
+                    }
 
                 },
                 error: function(error) {
@@ -793,7 +928,6 @@ function App() {
             $("#container").show();
             $("#title-container").text("");
             this.fully_automated_bbox(fname);
-            gottoObject(1);
         }
     };
 
@@ -959,6 +1093,7 @@ function App() {
                                         var old_id =  box.id;
                                         newbox.predicted_state = box.predicted_state;
                                         newbox.predicted_error = box.predicted_error;
+                                        newbox.tracking_idx = box.tracking_idx;
 
                                         app.editing_box_id = false;
 
@@ -1080,7 +1215,8 @@ function App() {
                 success: function(response) {
                     console.log("successfully saved output : ");
                     
-                   $("#title-container").text("");
+                    $("#title-container").text("");
+                    
                 },
                 error: function(error) {
                     console.log(error);
@@ -1148,7 +1284,7 @@ function App() {
         }
         this.lock_frame = true;
         
-        $("#title-container").text("Retreiving point annotation...");
+        $("#title-container").text("Retrieving point annotation...");
         $.ajax({
             context: this,
             url: '/getMaskRCNNLabels',
@@ -1348,22 +1484,18 @@ function show(frame) {
      var _current = app.move2D;
     switchMoveMode();
 
+    app.move2D = false;
     switch2DMode();
     app.move2D = _current;
     updateCountBBOX();
     
     $("#ReloadCurrentFrame").show();
 
-    if(app.move2D == true){
-        
-        switch2DMode();
-    }
     
     if(is_object_table_visible){
 
+        app.move2D = false;
         switch2DMode();
-        
-        
         eventFire(document.getElementById('objectIDs'), 'click');
         
         $("#GoToNextFrame").focus();

@@ -106,7 +106,7 @@ def predictBoundingBox():
 	# frame = fh.get_pointcloud(drivename, fname, dtype=float, ground_removed=False)
 	# print("num points with ground: {}".format(frame.shape))
 	frame = fh.get_pointcloud(drivename, fname, dtype=float, ground_removed=ground_removed)
-	return str(bp.predict_bounding_box(point, frame[car_points], settingsControls=json_request["settingsControls"]))
+	return str(bp.predict_bounding_box(point, frame, settingsControls=json_request["settingsControls"], car_points=car_points))
 
 @app.route("/predictNextFrameBoundingBoxes", methods=['POST'])
 def predictNextFrameBoundingBoxes():
@@ -117,12 +117,12 @@ def predictNextFrameBoundingBoxes():
 	if(frame == ""):
 		return "error"
 	else: 
-		res = bp.predict_next_frame_bounding_boxes(frame, json_request)
+		res, _total_time = bp.predict_next_frame_bounding_boxes(frame, json_request)
 		keys = res.keys()
 		for key in keys:
 			res[str(key)] = res.pop(key)
 		#print(res)
-		return str(res)
+		return str(res)+"?"+str(_total_time)
 
 
 @app.route("/fully_automated_bbox", methods=['POST'])

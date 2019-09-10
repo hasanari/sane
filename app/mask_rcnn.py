@@ -47,7 +47,7 @@ def get_pointcnn_labels_axcrf(filename):
     return bounded_indices.tolist()
     # os.system("rm classify/bounding_boxes/*.json")
 
-def get_pointcnn_labels(filename, settingsControls, ground_removed=False):
+def get_pointcnn_labels(filename, settingsControls, ground_removed=False, foreground_only=True):
     
     
     print("please wait....", filename)
@@ -109,5 +109,13 @@ def get_pointcnn_labels(filename, settingsControls, ground_removed=False):
         bounded_indices = np.fromfile(
                             os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+postfix+".bin"),
                             dtype=np.int)
-    return bounded_indices.tolist()
+        
+   
+
+    if(foreground_only):
+        bounded_indices =   (bounded_indices > 0 ).nonzero()[0]
+
+        return bounded_indices.tolist()
+    else:
+        return bounded_indices
 

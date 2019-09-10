@@ -1,10 +1,11 @@
 var maxSize = 4;
 var pointSize = 2;
+var old_camera = null;
 
 var SettingsControls = function() {
     this.Size = pointSize / maxSize;
     this.OutlierRemoval = 'None';
-    this.Clustering = 'OriginAwareClustering';
+    this.Clustering = 'DBSCAN';
     this.FittingCriterion = 1;
     this.WithXCRF = false;
     this.FrameTracking = true;
@@ -46,7 +47,7 @@ $('.moveGUI').append($(gui.domElement));
 var settingsControls = new SettingsControls();
 var settingsFolder = gui //.addFolder('settings');
 
-var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Hasan', 'Akhil', 'Zuxin', 'Mansur', 'Guilin', 'Manoj', 'Runzhong']).onChange(function() {
+var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Kim-Ji-Eun', 'GroundTruth', 'Hasan', 'Akhil', 'Zuxin', 'Mansur', 'Guilin', 'Manoj', 'Runzhong']).onChange(function() {
     // Load Annotation - based on user ID
 
     if (app && app.cur_frame) {
@@ -68,8 +69,11 @@ var annId = settingsFolder.add(settingsControls, 'AnnotatorId', ['Guest', 'Hasan
         if (app.cur_frame) {
 
             for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
-                box = app.cur_frame.bounding_boxes[i_box]
-                delete_one_box(box);
+                box = app.cur_frame.bounding_boxes[i_box];
+                if(box){
+                    delete_one_box(box);
+                }
+                
 
             }
 
@@ -116,18 +120,17 @@ settingsFolder.add(settingsControls, 'FullyAutomatedBbox').onChange(function() {
 
     app.cur_frame.annotated = false;
 
-    if (settingsControls['FullyAutomatedBbox'] == false) {
+    if (settingsControls['FullyAutomatedBbox'] == true) {
 
-        // deleteAllBoundingBox(false);
+
+        app.frame_lock = true;
+        fname = app.cur_frame["fname"]
+        //app.frames = []
+        app.fully_automated_bbox(fname);
+        app.frame_lock = false;
+
 
     }
-
-    app.frame_lock = true;
-    fname = app.cur_frame["fname"]
-    //app.frames = []
-    app.fully_automated_bbox(fname);
-    app.frame_lock = false;
-
     updateCountBBOX();
     
     
@@ -329,6 +332,7 @@ function clickKeystrokeControl(event) {
 function onKeyDown2(event) {
     if (isRecording) {
         
+        var old_camera = camera.rotation.clone();
         var epsilon = 0.05;
         var KeyID = event.keyCode;
         
@@ -393,6 +397,25 @@ function onKeyDown2(event) {
             case 90: // z key
                 showPreviousFrameBoundingBoxToggle(true);
                 break;
+                
+                
+                
+            case 188: // < key
+                  current_shift = isShiftPressed;
+                  isShiftPressed = false;
+                  moveBoxLocations(0, -epsilon, false);
+                
+                  isShiftPressed = current_shift;
+                break;
+            case 190: // > key
+                
+                 current_shift = isShiftPressed;
+                 isShiftPressed = false;
+                 moveBoxLocations(0, epsilon, false);
+                
+                 isShiftPressed = current_shift;
+                break;
+                
 
             case 68:
             default:
@@ -416,6 +439,13 @@ function onKeyUp2(event) {
         }
         
         toggleControl(true);
+        if (KeyID == 17) { // shiftkey ctrl key
+
+
+             app.bbox_visualization();
+             
+            //app.bbox_visualization();
+        }
         switch (KeyID) {
 
             case 32: // space key
@@ -426,6 +456,9 @@ function onKeyUp2(event) {
            
             case 82: // r key
                 toogle_color();
+                if(app.move2D){
+                    camera3.rotation.setFromVector3(camera.rotation.clone());  
+                }
                 break;
                 
             case 65: // a key
@@ -449,6 +482,11 @@ function onKeyUp2(event) {
                     $("#summary-object-islocked").prop('checked', !current_check);
 
                     toggle_locked_box(selectedBox);
+
+                    if(app.move2D){
+                        camera3.rotation.setFromVector3(camera.rotation.clone());  
+                    }      
+                    
                 }
 
 
@@ -471,6 +509,9 @@ function onKeyUp2(event) {
                 
             case 84: // t key
                 recenter_objects();
+                if(app.move2D){
+                    camera3.rotation.setFromVector3(camera.rotation.clone());  
+                }      
                 break;
                 
                 
@@ -493,14 +534,24 @@ function onKeyUp2(event) {
         settingsFolder.updateDisplay();
     }
 
-    if (event.ctrlKey) {
+    
+    controls.update();
+    
+    if (KeyID == 17) { // shiftkey ctrl key
 
-
-        app.bbox_visualization();
 
         toggleControl(true);
+        
+        if(app.move2D){
+            camera3.rotation.setFromVector3(camera.rotation.clone());  
+        }  
+        
 
     }
+    
+    hoverBoxes.pop()
+
+    
 }
 
 function is_all_objects_locked(){
@@ -625,6 +676,7 @@ function gottoObject(object_location) {
             var boxId = box_ids[ (current_box_idx + object_location) % box_ids.length ];
         }else{
             var boxId =  app.cur_frame.bounding_boxes[0].id;
+            
         }
         box = getBoxById(boxId);
         if (box) {
@@ -635,6 +687,7 @@ function gottoObject(object_location) {
             app.bbox_visualization();
 
             app.forceVisualize = false;
+            
 
         }
     }
@@ -725,7 +778,12 @@ function toggleControl(b) {
     controls2.enabled = b;
     controls2.update();
 
-   
+    controls3.enabled= b;
+    controls3.update();
+
+    
+    camera3.rotation.setFromVector3(camera.rotation.clone());  
+    
     if (app.isRedColor == false) {
         app.forceVisualize = true;
         app.bbox_visualization();

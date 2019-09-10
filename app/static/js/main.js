@@ -11,6 +11,8 @@ var threshold = 0.5,
     pointSize = 1;
 
 // data structures
+var animationFrame1 = [];
+var animationFrame2 = [];
 var boundingBoxes = [],
     hoverBoxes = [];
 var image_loaded = false;
@@ -99,13 +101,14 @@ function init() {
 
 
     camera2 = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 100000);
-    camera2.position.set(-10, 0, 5);
+    camera2.position.set(-4, 0, 5);
     camera2.lookAt(new THREE.Vector3(0, 0, 0));
 
 
     camera3 = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 100000);
-    camera3.position.set(0, 10, -5);
+    camera3.position.set(0, 2, -5);
     camera3.lookAt(new THREE.Vector3(0, 0, 0));
+
 
 
     //
@@ -320,27 +323,36 @@ function init() {
     });
 
 
-    $("#container").click(function() {
+    $("#container").click(function() { 
 
         var p = app.getCursor();
 
         for (var i_box = app.cur_frame.bounding_boxes.length - 1; i_box >= 0; i_box--) {
-            box = app.cur_frame.bounding_boxes[i_box]
+            box = app.cur_frame.bounding_boxes[i_box];
+            
             //console.log("i_box", i_box);
             // if( bb_max.x >= p.x && bb_max.z >= p.z && bb_min.x <= p.x && bb_min.z <= p.z ) {
 
+            
+            box.estimate_height( true );
             if (p && containsPoint(box, p)) {
 
+                
+                box.estimate_height( app.move2D);
 
                 selectedBox = box;
                 app.bbox_visualization();
-                return;
+                
+                break;
             } else {
 
                 //console.log("not-deleted",p, box, app.cur_frame.bounding_boxes[i_box].id);
             }
+            
+            
+            box.estimate_height( app.move2D);
 
-        }
+        } 
 
     });
 
@@ -350,6 +362,10 @@ function init() {
     document.getElementById('move2D').className = "";
     document.getElementById('objectIDs').className = "selected";
     document.getElementById('move').className = "";
+    
+    
+    camera3.rotateZ(-3.14);
+    onWindowResize();
 
 }
 
@@ -359,11 +375,30 @@ function recenter_objects(){
            selectedBox.innerRotate( Math.PI);
         }
         
+        camera3.lookAt(new THREE.Vector3(0, 0, 0));
+
+
+    
+        app.move2D = false;
+        switch2DMode();
+        
+        
+        eventFire(document.getElementById('objectIDs'), 'click');
+        
+        
+        
+    
+        camera3.rotation.setFromVector3(camera.rotation.clone());  
+        controls3.update()
+        camera3.rotation.setFromVector3(camera.rotation.clone());  
+        
+    
         app.forceVisualize = true;
         app.bbox_visualization();
         app.forceVisualize = false;
     
 
+        $("#GoToNextFrame").focus();
 }
 
 function toogle_color(){
@@ -442,9 +477,12 @@ function toggle_locked_box(box){
 
 function write_frame_out() {
     var FrameTracking = settingsControls["FrameTracking"];
-    settingsControls["FrameTracking"] = true; // Force saving!!!
+    // settingsControls["FrameTracking"] = true; // Force saving!!!
     app.write_frame_out();
-    settingsControls["FrameTracking"] = FrameTracking;
+    if(settingsControls["FrameTracking"]){// Repair Kalman state
+        //ReloadCurrentFrame();
+    }
+    
 }
 // function write_frame() {
 //     evaluator.pause_recording();
@@ -568,7 +606,28 @@ function moveBoxLocations(_x, _z, is_mouse_up){
 
 
       if(selectedBox && !controls.enabled && selectedBox.islocked == false){
-          
+        
+       var _azimuth =  controls.getAzimuthalAngle() * 180.0;
+       //console.log("_azimuth", _azimuth);
+          /*
+       if( _azimuth  > 90 ){
+           _x = _x * -1;
+           _z = _z * -1;
+           
+       }else if( _azimuth  > 0 ){
+           //_x = _x * -1;
+           //_z = _z * -1;
+           
+       }else if( _azimuth  > -90 ){
+           //_x = _x * -1;
+           //_z = _z * -1;
+           
+       }else{
+           _x = _x * -1;
+           _z = _z * -1;
+                  
+       
+       }*/
           
         if(isShiftPressed){
         
@@ -780,6 +839,8 @@ function onDocumentMouseMove(event) {
                 scene.add(newBox.points);
                 scene.add(newBox.boxHelper);
                 newBox.added = true;
+                
+                newBox.initializeBox3D();
                 
             }
             if (newBox) {
@@ -1028,6 +1089,9 @@ function onDocumentMouseDown(event) {
                 anchor = anchor.clone();
 
                 newBox = new Box(anchor, v, angle, newBoundingBox, newBoxHelper);
+                
+                
+                //newBox.estimate_height();
 
             }
 
@@ -1042,29 +1106,54 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
 
     renderer.setSize(window.innerWidth, window.innerHeight);
+    
+    
+    camera2.aspect = 500 / 400;
+    camera2.updateProjectionMatrix();
+
+    renderer2.setSize(500, 400);
+    
+    
+    camera3.aspect =500 / 400;
+    camera3.updateProjectionMatrix();
+
+    renderer3.setSize(500, 400);
+    
 
 }
 
 function animate2() {
 
-
-    requestAnimationFrame(animate2);
-    render2();
-    render3();
+    animate_all();
+    
    
-    //stats.update();
-    //stats3.update();
-
 }
 
 function animate() {
 
-    requestAnimationFrame(animate);
+    animate_all();
 
-    render();
+}
+
+function animate_all(){
+
+
+    if(animationFrame1.length > 0){
+        for( var i=0; i < animationFrame1.length; i++){
+              cancelAnimationFrame(animationFrame1[i]);
+        }
+        animationFrame1 = [];
+    }
+    animationFrame1.push( requestAnimationFrame(animate_all) );
+    
+
+    
+    render();    
+    render2();
+    render3();
     stats.update();
-    //stats2.update();
-
+    
+    
 }
 
 /* Gets the 3D cursor position that is projected onto the z plane */
@@ -1095,11 +1184,13 @@ var toggle = 0;
 
 function render2() {
     toggle += clock.getDelta();
+    //console.log("scene2", scene2.children.length);
     renderer2.render(scene2, camera2);
 }
 
 function render3() {
     toggle += clock.getDelta();
+    //console.log("scene3", scene3.children.length, animationFrame1.length, animationFrame2.length);
     renderer3.render(scene3, camera3);
     update_footer_camera3();
 }
@@ -1217,6 +1308,16 @@ function moveMode(event) {
         controls.maxPolarAngle = 2 * Math.PI;
         controls.minPolarAngle = -2 * Math.PI;
         app.resume_3D_time();
+        
+        
+        for(var i=0; i < app.cur_frame.bounding_boxes.length; i++){
+            app.cur_frame.bounding_boxes[i].initializeBox3D();
+             app.cur_frame.bounding_boxes[i].estimate_height(false);
+            
+        }
+        
+        app.cur_pointcloud.geometry.verticesNeedUpdate = true;
+        
     }
     unprojectFromXZ();
 }
@@ -1247,6 +1348,8 @@ function moveMode(event) {
 function objectListVisualization(event){
 
     event.preventDefault();
+    
+    move2DMode(event);
     
     document.getElementById('move').className = "";
     document.getElementById('move2D').className = "";    
@@ -1294,6 +1397,13 @@ function projectOntoXZ() {
             v.y = 0;
         }
     }
+    
+    for(var i=0; i < app.cur_frame.bounding_boxes.length; i++){
+        app.cur_frame.bounding_boxes[i].initializeBox3D();
+        app.cur_frame.bounding_boxes[i].estimate_height(true);
+    }
+    
+    
     app.cur_pointcloud.geometry.verticesNeedUpdate = true;
 }
 
@@ -1303,6 +1413,15 @@ function unprojectFromXZ() {
             var v = app.cur_pointcloud.geometry.vertices[i];
             v.y = app.cur_frame.ys[i];
         }
+
+        
+        
+        for(var i=0; i < app.cur_frame.bounding_boxes.length; i++){
+            //app.cur_frame.bounding_boxes[i].initializeBox3D();
+            //app.cur_frame.bounding_boxes[i].estimate_height(false);
+            
+        }
+        
         app.cur_pointcloud.geometry.verticesNeedUpdate = true;
     }
 }

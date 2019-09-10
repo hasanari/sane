@@ -8,10 +8,12 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
     this.islocked = false;
     this.is_auto_generated =false;
     this.initialcursor=false;
-    this.height = 0; // cursor
+    this.height = false; // cursor
+    this.y_max = false;
+    this.tracking_idx = 0;
     
     this.predicted_state = [0, 0, 1, 1, 1, 1]; // x, y, , vx, vy, ax, ay
-    this.predicted_error =  [0, 0, 0, 0, 0, 0]; // x, y, , vx, vy, ax, ay
+    this.predicted_error =  [1, 1, 1, 1, 1, 1]; // x, y, , vx, vy, ax, ay
     
     this.added = false; // (boolean) whether the box has been added to boundingboxes
     this.boundingBox = boundingBox; // Box3; sets the size of the box
@@ -51,6 +53,116 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
     
     this.hasPredictedLabel = false;
     this.text_label;
+    this.box_created = false;
+    this.bbox3d;
+    this.bbox3d_helper;
+    
+    
+    this.estimate_height = function(is_move2D){
+
+        return
+        if(app.cur_frame && app.cur_frame.data){
+
+            var v1 = this.geometry.vertices[0];
+            var v2 = this.geometry.vertices[1];
+            var v3 = this.geometry.vertices[2];
+            var center = getCenter(v1, v2);
+
+            //var center = new THREE.Vector2(center.z, center.x);
+            var width = distance2D(v2, v3);
+            var length = distance2D(v1, v3);
+            
+            if((this.height && this.y_max )){
+
+                var y_max = this.y_max;
+                var height = this.height;
+                
+                if( is_move2D ){
+                    y_max = 0.00001
+                    height = 0.00002
+                }
+                var epsilon = 0;
+                
+                this.geometry.vertices[0].y = y_max +epsilon;
+                this.geometry.vertices[1].y = y_max +epsilon;
+                this.geometry.vertices[2].y = y_max +epsilon;
+                this.geometry.vertices[3].y = y_max +epsilon;
+                this.geometry.vertices[4].y = y_max +epsilon;
+
+                //this.bbox3d.setFromCenterAndSize(new THREE.Vector3(center.x, y_max- (height / 2) , center.z), new THREE.Vector3(length, height, width));
+
+                this.boxHelper.box.max.y = y_max +epsilon;
+                this.boxHelper.box.min.y = y_max-height +epsilon;
+                
+                this.geometry.verticesNeedUpdate = true;
+                
+                
+                //console.log("this.geometry.verticesNeedUpdate");
+
+                
+            }
+
+        }
+
+        
+    }
+    
+    this.initializeBox3D = function(){
+    
+    
+        if(this.box_created == false && app.cur_frame && app.cur_frame.data){
+
+            var v1 = this.geometry.vertices[0];
+            var v2 = this.geometry.vertices[1];
+            var v3 = this.geometry.vertices[2];
+            var center = getCenter(v1, v2);
+
+            //var center = new THREE.Vector2(center.z, center.x);
+            var width = distance2D(v2, v3);
+            var length = distance2D(v1, v3);
+
+
+            var py = [];
+            var vertices= app.cur_frame.data;
+            var k = 0;
+            for ( var i = 0, l = vertices.length / DATA_STRIDE; i < l; i ++ ) {
+
+                var v = new THREE.Vector3( vertices[ DATA_STRIDE * k + 1 ], 
+                0, vertices[ DATA_STRIDE * k ] );
+                if (v && containsPoint(this, v)) {
+                    //console.log("v.y", v, v.y);
+                    py.push(vertices[ DATA_STRIDE * k + 2 ]);
+                }
+
+                k++; 
+            }
+
+            var y_min = Math.min(...py);
+            var y_max = Math.max(...py);
+
+
+
+            var car_height = y_max - y_min;
+
+
+
+            //console.log(":::", y_max, y_min, length, width);
+
+            if(car_height > 0){
+                
+                
+                this.y_max = y_max;
+                this.height = car_height;
+                
+                this.box_created = true;
+            }
+
+        }
+       
+
+    
+    }
+    
 
     this.get_center = function() {
         var center3D = getCenter(this.geometry.vertices[0], this.geometry.vertices[1]);
@@ -74,6 +186,12 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
         return {x:0.0, y:0.0, z:0.0 };
     }
     
+    this.updateHeightCorners = function(){
+    
+        if(app.z_dot){
+            scene2.remove(app.z_dot);
+        }
+    }
     this.resize = function(cursor) {
         // checks and executes only if anchor does not overlap with cursor to avoid 0 determinant
         if (cursor.x != this.anchor.x && cursor.y != this.anchor.y && cursor.z != this.anchor.z) {
@@ -123,6 +241,10 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
 
             // tell scene to update corner points
             this.geometry.verticesNeedUpdate = true;
+            
+
+            this.updateHeightCorners();
+            this.estimate_height( app.move2D);
         }
     }
 
@@ -175,6 +297,12 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
         // tell scene to update corner points
         this.geometry.verticesNeedUpdate = true;
         
+        if(this.bbox3d_helper){
+            this.bbox3d_helper.rotation.y = this.angle;
+        }
+        this.updateHeightCorners();
+                    
+        
     }
 
 
@@ -214,6 +342,11 @@ function Box(anchor, cursor, angle, boundingBox, boxHelper) {
 
         // tell scene to update corner points
         this.geometry.verticesNeedUpdate = true;
+        
+        
+        this.updateHeightCorners();
+        this.estimate_height( app.move2D);
+        
     }
 
     // method to highlight box given cursor
@@ -439,13 +572,7 @@ function highlightCornersTopView() {
 
         // set hover box to null since there is no intersection
         hoverBox = null;
-    }
-    
-    
-    
-    
-        
-        
+    }   
 }
     
 function changeCursor(is_Moving, cursor, box){
@@ -497,14 +624,11 @@ function createBox(anchor, v, angle) {
         newBox = new Box(anchor, v, angle, newBoundingBox, newBoxHelper);
         newBox.resize(v);
     }
-    
-
     return newBox;
 }
 
 function createAndDrawBox(anchor, v, angle) {
-    var newBox = createBox(anchor, v, angle);
-    
+    var newBox = createBox(anchor, v, angle);    
     drawBox(newBox);
     return newBox;
 }
@@ -517,6 +641,8 @@ function drawBox(box) {
         scene.add(box.boxHelper);
 
 
+        box.initializeBox3D();
+        
         updateAllObjectIds();
     }
     
@@ -593,12 +719,17 @@ function delete_one_box(box){
     app.editing_box_id = false;
 
 
+    scene.remove(box.bbox3d_helper);
+    
     scene.remove(box.points);
     scene.remove(box.boxHelper);
     box.text_label.element.remove();
 
     // deletes corresponding row in object id table
-    app.cur_frame.last_bbox_id = box.id;
+    if(app.cur_frame &&  app.cur_frame.last_bbox_id){
+        app.cur_frame.last_bbox_id = box.id;
+    }
+    
     deleteRow(box.id);
     
     
@@ -633,6 +764,9 @@ Box.parseJSON = function(json_boxes) {
     if (!Array.isArray(json_boxes)) {
         json_boxes = [json_boxes];
     }
+    
+    
+    
     for (var i = 0; i < json_boxes.length; i++) {
         json_box = json_boxes[i];
         w = json_box['width'];
@@ -665,6 +799,15 @@ Box.parseJSON = function(json_boxes) {
             if (json_box.hasOwnProperty('box_id')) {
                 box.id = json_box.box_id;
             }
+            
+            if (json_box.hasOwnProperty('tracking_idx')) {
+                box.tracking_idx =  json_box['tracking_idx'];
+            }
+            
+            
+            
+            
+            
             box.is_auto_generated = is_auto_generated;
             
             box.object_id =  json_box['object_id'];
@@ -680,7 +823,6 @@ Box.parseJSON = function(json_boxes) {
             }
                 
         }
-        //console.log("output: ", box, json_box);
     }
     return bounding_boxes;
 }
@@ -716,9 +858,19 @@ function OutputBox(box) {
     this.settingsControls = box.settingsControls;
     this.timestamps = box.timestamps;
     
-    this.predicted_error = box.predicted_error;
+    this.predicted_error = box.predicted_error;    
+    this.predicted_state = box.predicted_state;     
+    this.tracking_idx = box.tracking_idx;  
+    /*
     
-    var v_x = box.predicted_state[0]-center.z;
-    var v_y = box.predicted_state[1]-center.x;
-    this.predicted_state = [box.predicted_state[0], box.predicted_state[1], v_x, v_y, box.predicted_state[2] - v_x, box.predicted_state[3] - v_y ];
+    var dt = 0.1;
+    var v_x = (center.z - box.predicted_state[0]) / dt;
+    var v_y = (center.x - box.predicted_state[1]) / dt;
+    
+    var a_x = (v_x - box.predicted_state[2]) / dt;
+    var a_y = (v_y - box.predicted_state[3]) / dt;
+        
+    this.predicted_state = [box.predicted_state[0], box.predicted_state[1], v_x, v_y, a_x, a_y];
+    
+    */
 }
