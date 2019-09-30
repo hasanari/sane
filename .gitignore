@@ -5,7 +5,8 @@ app/output/
 app/test_dataset/
 app/static/images/
 app/PointCNN/output/
-pointcnn-models/*
+pointcnn-models/normal/*
+pointcnn-models/denoise/*
 *.pyc
 *.bin
 .ipynb
