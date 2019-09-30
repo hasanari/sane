@@ -6,7 +6,7 @@ import time
 import random
 
 
-python27 = " CUDA_VISIBLE_DEVICES=0 /home/hasan/anaconda2/envs/p27_gpu/bin/python2.7 "
+pythonApp = " CUDA_VISIBLE_DEVICES=0 python3.6 "
 script_axcrf = " PointCNN/predicting_point_segmentation.py " #"predicting_point_segmentation_with_axcrf.py  "
 script_seg = "  PointCNN/predicting_point_segmentation.py "
 
@@ -18,7 +18,7 @@ def check_succes_sys_call(_command, file_check):
         
         print(i, os.path.isfile(file_check), file_check)
         
-        os.system(" killall python2.7 & ")
+        os.system(" killall python3.6 & ")
         os.system(_command)  
         if(i>0):
             time.sleep(random.randint(5,30))
@@ -33,11 +33,11 @@ def get_pointcnn_labels_axcrf(filename):
     drivename, fname = filename.split("/")    
     if os.path.isfile( os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+"axcrf.bin") ) == False :
 
-        os.system(" killall python2.7 & ")
+        os.system(" killall python3.6 & ")
             
-        os.system(python27+ script_axcrf + "--retrieve_whole_files=0 --filename={}".format(filename))
+        os.system(pythonApp+ script_axcrf + "--retrieve_whole_files=0 --filename={}".format(filename))
         
-        os.system(python27+ script_axcrf + "--retrieve_whole_files=1 --filename={}".format(filename)+ " &")
+        os.system(pythonApp+ script_axcrf + "--retrieve_whole_files=1 --filename={}".format(filename)+ " &")
 
     bounded_indices = np.fromfile(
                         os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+"axcrf.bin"),
@@ -65,9 +65,9 @@ def get_pointcnn_labels(filename, settingsControls, ground_removed=False, foregr
         if(ground_removed):
             
             if os.path.isfile( os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+"ground_removed.bin") ) == False :
-                check_succes_sys_call(python27+ script_seg + " --ground_removed=1 --retrieve_whole_files=0 --filename={}".format(filename),  os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+"ground_removed.bin") )
+                check_succes_sys_call(pythonApp+ script_seg + " --ground_removed=1 --retrieve_whole_files=0 --filename={}".format(filename),  os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+"ground_removed.bin") )
 
-                os.system(python27+ script_seg + " --ground_removed=1 --retrieve_whole_files=1 --filename={}".format(filename)+ " &")
+                os.system(pythonApp+ script_seg + " --ground_removed=1 --retrieve_whole_files=1 --filename={}".format(filename)+ " &")
             
             
             bounded_indices = np.fromfile(
@@ -80,10 +80,10 @@ def get_pointcnn_labels(filename, settingsControls, ground_removed=False, foregr
             if os.path.isfile( os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+postfix+".bin") ) == False :
 
           
-                check_succes_sys_call(python27+ script_seg + " --ground_removed=0 --retrieve_whole_files=0 --postfix="+postfix+" --filename={}".format(filename),   os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+postfix+".bin"))
+                check_succes_sys_call(pythonApp+ script_seg + " --ground_removed=0 --retrieve_whole_files=0 --postfix="+postfix+" --filename={}".format(filename),   os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+postfix+".bin"))
                     
 
-                os.system(python27+ script_seg + " --ground_removed=0  --retrieve_whole_files=1 --postfix="+postfix+" --filename={}".format(filename)+ " & ")
+                os.system(pythonApp+ script_seg + " --ground_removed=0  --retrieve_whole_files=1 --postfix="+postfix+" --filename={}".format(filename)+ " & ")
                 
                 
             bounded_indices = np.fromfile(
@@ -101,9 +101,9 @@ def get_pointcnn_labels(filename, settingsControls, ground_removed=False, foregr
         if os.path.isfile( os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+postfix+".bin") ) == False :
 
             
-            check_succes_sys_call(python27+ script_seg + " --ground_removed=0 --retrieve_whole_files=0 --postfix="+postfix+" --filename={}".format(filename), os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+postfix+".bin"))
+            check_succes_sys_call(pythonApp+ script_seg + " --ground_removed=0 --retrieve_whole_files=0 --postfix="+postfix+" --filename={}".format(filename), os.path.join(ROOT_DIR, "PointCNN/output/"+drivename+"_"+fname+postfix+".bin"))
             
-            os.system(python27+ script_seg + " --ground_removed=0  --retrieve_whole_files=1 --postfix="+postfix+" --filename={}".format(filename)+ " & ")
+            os.system(pythonApp+ script_seg + " --ground_removed=0  --retrieve_whole_files=1 --postfix="+postfix+" --filename={}".format(filename)+ " & ")
             
             
         bounded_indices = np.fromfile(
