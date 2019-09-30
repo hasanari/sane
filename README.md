@@ -31,7 +31,7 @@ Bridging the needs to provide high-quality, time-efficient, and easy-to-use anno
 
 ## Acknowledgment
 
-Most of the code structures are taken from Latte annotation tool (https://github.com/bernwang/latte/) and PointCNN pointwise segmentation (https://github.com/yangyanli/PointCNN).
+Most of the codes and code structures are taken from Latte annotation tool (https://github.com/bernwang/latte/) and PointCNN pointwise segmentation (https://github.com/yangyanli/PointCNN).
 
 **Changes and Updates**:
 1. Automatic detection algorithm:
