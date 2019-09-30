@@ -245,6 +245,7 @@ class BoundingBox:
         predicted_error,
         settingsControls,
         tracking_idx,
+        timestamps,
         islocked
         ):
         self.box_id = box_id
@@ -261,6 +262,7 @@ class BoundingBox:
         self.predicted_state = np.transpose(np.array(predicted_state, dtype=np.float32))
         self.tracking_idx = tracking_idx
         self.islocked = islocked
+        self.timestamps = timestamps
 
     @staticmethod
     def parse_json(json):
@@ -276,6 +278,7 @@ class BoundingBox:
             json_obj['predicted_error'],
             json_obj['settingsControls'],
             json_obj['tracking_idx'],
+            json_obj['timestamps'],
             json_obj['islocked'],
             ) for json_obj in json]
 

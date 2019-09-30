@@ -259,13 +259,6 @@ class BoundingBoxPredictor():
         
         car_points = get_pointcnn_labels(drivename+"/"+next_fname, json_request["settingsControls"], ground_removed=ground_removed)
         
-        
-        #current_pc = self.frame_handler.get_pointcloud(drivename, current_fname, dtype=float, ground_removed=ground_removed)
-        
-        #current_pc_png = np.copy(self.ground_plane_fitting(current_pc)['png'])
-        
-        
-        
         next_all_pc_fresh = self.frame_handler.get_pointcloud(drivename, next_fname, dtype=float, ground_removed=ground_removed)
         
         next_pc = np.copy(next_all_pc_fresh[car_points])
@@ -273,11 +266,7 @@ class BoundingBoxPredictor():
         z_axis = np.max(next_pc[:,2]) # Ground already removed
         
         next_all_pc = np.copy(next_all_pc_fresh[next_all_pc_fresh[:,2]> z_axis-3 ])
-        
-        
-        
-        #print(fname, ground_removed)
-        #print([box.box_id for box in frame.bounding_boxes])
+
         bounding_boxes = sorted(frame.bounding_boxes, 
                             key=lambda box:box.box_id)
         centers = {box.box_id:box.center for box in bounding_boxes}
@@ -382,9 +371,6 @@ class BoundingBoxPredictor():
         self.search_number = 20
         if( is_guided_tracking):   
             while( is_bboxes_updated.any() and _padding > 0.01 ):               
-                
-        
-                #is_bboxes_updated[:] = True
 
                 updated_bounding_boxes = []          
 
@@ -448,48 +434,14 @@ class BoundingBoxPredictor():
                 _padding = _padding * 0.1
                 
                 print("is_bboxes_updated",is_bboxes_updated,  is_bboxes_updated.any() )
-                 
-
-                
+       
         final_bounding_boxes = {}
         criterion = closeness_criterion
-        
-        
         start = time.time()
-
-        for bbox in self.next_bounding_boxes:
-            
-            
-            
+        for bbox in self.next_bounding_boxes: 
             bbox_structure, _, _ = self.corners_to_bounding_box( bbox.get_corners(), None, False)
             final_bounding_boxes[str(bbox.id)]=bbox.get_bounding_box(bbox_structure)
-            
 
-    
-            #bbox_structure["angle"] = new_angle
-            
-            """
-            #Update angle if required
-            _, pcInside = filter_pointcloud(bbox_structure, np.copy(next_all_pc[:,:2]) )
-            #print("pcInside", pcInside.shape)
-            #_, new_corners = self.search_rectangle_fit(pcInside, criterion, False)
-            
-            
-            #print("new_corners", new_corners.shape, new_corners)
-            
-            #new_bbox_structure, _, _ = self.corners_to_bounding_box(new_corners, None, False)
-            
-            update_angle =  self.search_rectangle_fit(pcInside, criterion, True)
-            old_angle = math.degrees(bbox_structure["angle"])
-            new_angle = math.degrees(update_angle)
-            
-  
-            print(str(bbox.id), "new_angle", abs( old_angle - new_angle ), old_angle, new_angle)
-        
-            if(abs( old_angle - new_angle )  < self.max_angle_changes_on_deg):
-                final_bounding_boxes[str(bbox.id)]["angle"] = update_angle
-
-            """
         print("Recalculate angle: ", time.time() - start)
         
         #pretty( self.boxHistoryLocations )
@@ -579,75 +531,7 @@ class BoundingBoxPredictor():
             #print("all_corners_set", all_corners_set)
    
         return box_state, all_corners_set, bounding_box.center
-    """
-    def filter_pointcloud(self, pointcloud, obj_shape, updated_size = 0):
-        angle, center, width, length = obj_shape
-        theta = angle
-        transformed_pointcloud = homogeneous_transformation(pointcloud,
-                center, -theta)
-        indices = \
-            np.intersect1d(np.where(np.abs(transformed_pointcloud[:,
-                           0]) <= (width+updated_size) / 2)[0],
-                           np.where(np.abs(transformed_pointcloud[:,
-                           1]) <= (length+updated_size) / 2)[0])
-        return (np.delete(pointcloud, indices, axis=0),
-                pointcloud[indices, :])
-    
-    def guided_search_bbox_optimized(self, corners, points, max_points, all_corners_set, bounding_box):
-        
-        center_predict = bounding_box.center
-        pc = np.copy(points) #Backup original
-        
-        sorted_corners = sorted(corners, key=lambda x:x[1])
-        if sorted_corners[2][0] > sorted_corners[3][0]:
-            sorted_corners[2], sorted_corners[3] = sorted_corners[3], sorted_corners[2]
-        if sorted_corners[0][0] > sorted_corners[1][0]:
-            sorted_corners[0], sorted_corners[1] = sorted_corners[1], sorted_corners[0]
 
-        top_right_corner = sorted_corners[3]
-        top_left_corner = sorted_corners[2]
-        bottom_left_corner = sorted_corners[0]
-        bottom_right_corner = sorted_corners[1]
-        
-        top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner, center, w, l = self.calibrate_orientation( top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
-        
-        
-        #print("-start", top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner)
-        
-        top_right_corner = top_right_corner - top_left_corner
-        angle = np.arctan2(top_right_corner[1], top_right_corner[0])
-        top_right_corner += top_left_corner
-        
-        
-        search_number = self.search_number # 100*100 search space
-
-        car_size = {"width": w, "length": l}
-        
-        history_locations = {}
-
-        _data_check = []
-        
-        ys = np.linspace(bottom_left_corner[1]-(car_size["length"]*self.padding), top_left_corner[1]+(car_size["length"]*self.padding), search_number)
-        xs = np.linspace(bottom_left_corner[0]-(car_size["width"]*self.padding), bottom_right_corner[0]+(car_size["width"]*self.padding), search_number)
-
-        for _y in ys:
-            if( _y not in history_locations):
-                history_locations[_y] = {}
-            for _x in xs:
-                
-                if( _x not in history_locations[_y]):
-                    obj_shape = [angle, center[0]+ ]
-                    _, pc_inside = self.filter_pointcloud(self, np.copy(pc), obj_shape, updated_size = 0)
-                    
-                
-
-                top_left_corner, top_right_corner, bottom_right_corner, bottom_left_corner = self.rotate_corners( _x, _y, car_size, angle, _origin)
-
-
-                
-                
-        
-    """    
     def guided_search_bbox_location(self, corners, points, max_points, all_corners_set, bounding_box):
         
         
@@ -753,10 +637,6 @@ class BoundingBoxPredictor():
 
                                 _data_check.append([_x, _y ,len(pointsInside), pointsInside])
                                 self.boxHistoryLocations[bounding_box.box_id][x_key][y_key] = len(pointsInside)
-
-
-
-
         
         if(len(_data_check)> 0):
             _data_check = np.array( _data_check )
@@ -775,10 +655,6 @@ class BoundingBoxPredictor():
                 return corners, all_corners_set
             
             else:
-
-            
-
-                # select max with error treshold
                 idx_max_all = (_data_check[:,2] >= (_number_of_points - error_annotation_treshold) ).nonzero()[0] 
 
                 # If multiple locations have the same number of contained points 
@@ -826,11 +702,6 @@ class BoundingBoxPredictor():
 
                         center = np.mean(np.vstack((top_right_corner, bottom_left_corner)), axis=0)
 
-
-                        print("_storage", _min, __i, "rest", rest[__i],  np.unique(dist_arg_min_storage[__i], return_counts=True), "location", center )
-
-
-                    print("dist_arg_min_storage", np.unique(dist_arg_min_storage[_min], return_counts=True) )
                     _best_location = idx_max_all[_min] # Update current best point location
 
 
@@ -855,8 +726,6 @@ class BoundingBoxPredictor():
                     all_corners_set[_number_of_points] = [corners, dist]
 
                     if(_number_of_points > max_points):
-
-                        #print("guided_search_bbox_location", _number_of_points, corners.shape)
                         return self.guided_search_bbox_location(corners, pc, _number_of_points, all_corners_set, bounding_box)
 
                 print("_number_of_points < max_points ", _number_of_points , max_points )
@@ -941,7 +810,6 @@ class BoundingBoxPredictor():
     def predict_bounding_box(self, point, pc_all, settingsControls=None, num_seeds=5, plot=False, car_points=None, with_PCA=False):
         
         '''
-        
         ActiveLearning: true
         AdaptiveCriterion: false
         Clustering: "DBSCAN"
@@ -1076,9 +944,6 @@ class BoundingBoxPredictor():
 
             dists, sample_indices = kd_tree.query(seeds)
             
-
-            
-            
         
             png_trimmed = np.concatenate( [ png_trimmed, seeds ], axis=0)
             
@@ -1118,31 +983,7 @@ class BoundingBoxPredictor():
             
             indices_check = _dist <= search_range # NN search
             png = png[indices_check.nonzero()[0],:]
-            
-            """
-            z_axis = np.min(png[:,2]) # Ground already removed
-            
-                        
-            png_all_fresh = np.copy(pc_all) #self.ground_plane_fitting(np.copy(pc_all))["png"]
-            
-            _dist_all = png_all_fresh[:,:2]-point[:2]
-            
-            _dist_all = np.sqrt( _dist_all[:,0:1]* _dist_all[:,0:1] + _dist_all[:,1:2]*_dist_all[:,1:2] )
-            
-            indices_check_all = _dist_all <= search_range # NN search
-            
-            
-            png_all_fresh = png_all_fresh[indices_check_all.nonzero()[0],:]  #Filtered NN all
-            
-            print("z_axis", z_axis, np.min(png[::,2]))
-            
-            png_all_pc = np.copy(png_all_fresh[png_all_fresh[:,2]> z_axis+0.1 ])
-        
-        
-            png = np.concatenate( [ png, png_all_pc ], axis=0)
-            
-            #print(indices_check.shape, len(indices_check.nonzero()[0]), png.shape)
-            """
+
             png_source = png #png[indices_check.nonzero()[0],:2]
             
 
