@@ -62,7 +62,7 @@ class PointCNN:
 
         if setting.sampling == 'fps':
             import sys
-            sys.path.append("/home/hasan/data/paper2/PointCNN/")
+            #sys.path.append("/home/hasan/data/paper2/PointCNN/")
             from sampling import tf_sampling
 
         self.layer_pts = [points]

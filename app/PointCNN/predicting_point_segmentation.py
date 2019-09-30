@@ -227,9 +227,9 @@ def main(FLAG):
     retrieve_whole_files = FLAG.retrieve_whole_files
 
     if(FLAGS.postfix == "denoise-weights"):
-        CHECKPOINT_LOCATION = "../../pointcnn-models/denoise/pretrained"
+        CHECKPOINT_LOCATION = "../pointcnn-models/denoise/pretrained"
     else: # (FLAGS.postfix == "normal-weights"):
-        CHECKPOINT_LOCATION = "../../pointcnn-models/normal/pretrained"
+        CHECKPOINT_LOCATION = "../pointcnn-models/normal/pretrained"
 
     max_point_num = 8192
 

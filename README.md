@@ -18,7 +18,7 @@ Bridging the needs to provide high-quality, time-efficient, and easy-to-use anno
    ```bash
    pip install -r requirements.txt
    ```
-3. Install PointCNN sampling module. By default we use Python3.6 for SAnE and PointCNN.
+3. Install and test PointCNN sampling module.
    ```bash
    cd app/PointCNN/sampling/
    sh tf_sampling_compile.sh
