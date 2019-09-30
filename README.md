@@ -24,7 +24,7 @@ Bridging the needs to provide high-quality, time-efficient, and easy-to-use anno
    sh tf_sampling_compile.sh
    python tf_sampling.py
    ```
-4. Download pre-trained denoising weights (denoising_weights.zip) from the [releases page](to be defined) into pointcnn-models/denoise.
+4. Download pre-trained denoising weights (denoising_weights.zip) from the [releases page](https://drive.google.com/open?id=1Uysbfz_4cdl9BQAYHBUBw7wCs_zZ6SNA) into pointcnn-models/denoise.
 5. To run the tool, run `python app.py` in wherever you have your `app` directory is.
 6. Open http://127.0.0.1:7772/ on a browser.
 
