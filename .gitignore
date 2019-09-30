@@ -8,3 +8,5 @@ app/PointCNN/output/
 pointcnn-models/
 *.pyc
 *.bin
+.ipynb
+*.ipynb

@@ -8,34 +8,32 @@ Bridging the needs to provide high-quality, time-efficient, and easy-to-use anno
 1. Clone this repository
 2. Setup virtual environment:
    ```Shell
-   virtualenv env
+   conda create -n sane python=3.6 anaconda
    ```
    Activate the virtual environment
    ```Shell
-   source env/bin/activate
+   source activate sane
    ```
-3. Install dependencies. By default we use Python3.7 for SAnE and Python3.6 for PointCNN.
+3. Install dependencies. By default we use Python3.6 for SAnE and PointCNN.
    ```bash
-   pip3 install -r requirements.txt
+   pip install -r requirements.txt
    ```
 4. Download pre-trained denoising weights (denoising_weights.zip) from the [releases page](to be defined) into pointcnn-models/denoise.
 5. To run the tool, run `python app.py` in wherever you have your `app` directory is.
-6. Open http://127.0.0.1:5000/ on a browser.
+6. Open http://127.0.0.1:7772/ on a browser.
 
 
 ## Acknowledgment
 
-Most of the code strctures are taken from Latte annotation tool (https://github.com/bernwang/latte/) and PointCNN pointwise segmentation (https://github.com/yangyanli/PointCNN).
+Most of the code structures are taken from Latte annotation tool (https://github.com/bernwang/latte/) and PointCNN pointwise segmentation (https://github.com/yangyanli/PointCNN).
 
 **Changes and Updates**:
 1. Automatic detection algorithm:
-
 > - Denoising PointCNN with adaptive-sampling approach.
 > - PointCNN for object-classification.
 > - PointCNN with bin-based regression.
 
 2. Refined interface features and functionalities:
-
 > - Removing dependency on ground removal.
 > - Simplifying object fitting process.
 > - Adding outlier removal algorithm.
@@ -44,7 +42,6 @@ Most of the code strctures are taken from Latte annotation tool (https://github.
 > - Addressing object occluded problem.
 
 3. Updated visuals:
-
 > - 3D bounding box view.
 > - Added more control.
 > - Top view per selected object.
