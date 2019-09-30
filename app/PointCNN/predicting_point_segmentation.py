@@ -225,21 +225,11 @@ def main(FLAG):
     data_filename = FLAG.filename
     ground_removed = FLAG.ground_removed
     retrieve_whole_files = FLAG.retrieve_whole_files
-    
-    if( "gta_" in data_filename):
-        
-        if(FLAGS.postfix == "denoise-weights"):
-            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/gta-only/denoise/0.9889917-iter--144000"
-        else: # (FLAGS.postfix == "normal-weights"):
-            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/gta-only/normal/0.9891319-iter--186000"
 
-        
-    else:
-
-        if(FLAGS.postfix == "denoise-weights"):
-            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/kitti-only/denoise/0.99273694-iter--246000"
-        else: # (FLAGS.postfix == "normal-weights"):
-            CHECKPOINT_LOCATION = "/home/hasan/data/hdd8TB/paper4-bosch-annotation/smart-annotation/pointcnn-models/kitti-only/normal/0.98931193-iter--143000"
+    if(FLAGS.postfix == "denoise-weights"):
+        CHECKPOINT_LOCATION = "../../pointcnn-models/denoise/pretrained"
+    else: # (FLAGS.postfix == "normal-weights"):
+        CHECKPOINT_LOCATION = "../../pointcnn-models/normal/pretrained"
 
     max_point_num = 8192
 
