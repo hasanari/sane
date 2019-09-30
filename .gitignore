@@ -4,7 +4,6 @@ app/.ipynb_checkpoints/
 app/output/
 app/test_dataset/
 app/static/images/
-app/PointCNN/output/
 pointcnn-models/normal/*
 pointcnn-models/denoise/*
 *.pyc
