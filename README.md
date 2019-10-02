@@ -4,7 +4,7 @@
 ### Abstract
 Bridging the needs to provide high-quality, time-efficient, and easy-to-use annotation tools, we propose SAnE, a semi-automatic annotation tool for point cloud data. While most current methods rely on multi-sensor approaches to provide bounding box annotations, we here focus on maximizing the potentials of point cloud data alone to provide high-quality point cloud labels. Our contributions of this paper are threefold: (1) we propose a denoising pointwise segmentation strategy enabling one-click annotation technique, (2) we expand the motion model technique with our novel guided-tracking algorithm easing the frame-to-frame annotation process, and (3) we provide an interactive yet robust open-source point cloud annotation tool simplifying the creation of high-quality bounding box annotations. Using KITTI dataset, we show that our approach speeds up the annotation process by a factor of 4.17 while achieving IoU agreements of 92.02\% and 82.22\% for 2D bounding box (BBOX) and Bird Eye View (BEV), respectively. A more careful annotation even achieves +19.37\% higher IoU agreement than the KITTI IoU agreement with the ground truth data.
 
-A demonstration of SAnE can be found below (SpeedUp by 2x):
+A demonstration of SAnE can be found below (at 2x speed):
 
 ![Alt Text](https://github.com/hasanari/smart-annotation/blob/master/sane-point-cloud.gif)
 
