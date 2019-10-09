@@ -1,4 +1,5 @@
 
+
 # _SAnE_: Smart annotation and evaluation tools for point cloud data
 
 ### Abstract
@@ -22,16 +23,36 @@ A demonstration of SAnE can be found below (at 2x speed):
    ```bash
    pip install -r requirements.txt
    ```
-3. Install and test PointCNN sampling module.
-   ```bash
-   cd app/PointCNN/sampling/
-   sh tf_sampling_compile.sh
-   python tf_sampling.py
-   ```
-4. Download pre-trained denoising weights (denoising_weights.zip) from the [releases page](https://drive.google.com/open?id=1Uysbfz_4cdl9BQAYHBUBw7wCs_zZ6SNA) into pointcnn-models/denoise.
-5. To run the tool, run `python app.py` in wherever you have your `app` directory is.
-6. Open http://127.0.0.1:7772/ on a browser.
 
+4. Download pre-trained denoising weights (denoising_weights.zip) from the [releases page](https://drive.google.com/open?id=1Uysbfz_4cdl9BQAYHBUBw7wCs_zZ6SNA) into pointcnn-models/denoise. The file structure should be:
+	```bash
+	pointcnn-models/denoise/pretrained.data-00000-of-00001
+	pointcnn-models/denoise/pretrained.index
+	pointcnn-models/denoise/pretrained.meta
+   ```
+ 4. (Optional) Install and test PointCNN sampling module.
+	   ```bash
+	   cd app/PointCNN/sampling/
+	   sh tf_sampling_compile.sh
+	   python tf_sampling.py
+	   
+	   #Change sampling module at Line[60] in app/PointCNN/pointcnn_seg/kitti3d_x8_2048_fps.py
+	   from -> sampling = 'random' 
+	   to -> sampling = 'fps' 
+	   ```
+6. To run the tool, run `python app.py` in wherever you have your `app` directory is.
+8. Open http://127.0.0.1:7772/ on a browser.
+
+
+### Troubleshooting
+
+ - CUDA version mismatch
+
+>   Try to install CUDA version 9.++ with cuDNN v7.05, SAnE uses tensorflow v1.7.0 which was compiled with that cuDNN v7.05.
+
+ - Failed to compile PointCNN sampling module
+
+>  Check here https://github.com/yangyanli/PointCNN/issues/87
 
 ## Acknowledgment
 
