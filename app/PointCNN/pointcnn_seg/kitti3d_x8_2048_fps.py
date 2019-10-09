@@ -57,7 +57,7 @@ fc_params = [dict(zip(fc_param_name, fc_param)) for fc_param in
              [(32 * x, 0.0),
               (32 * x, 0.5)]]
 
-sampling = 'fps'
+sampling = 'random' # change to 'fps' if succesfully compile fps sampling module
 
 optimizer = 'adam'
 epsilon = 1e-5
