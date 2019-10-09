@@ -26,9 +26,9 @@ A demonstration of SAnE can be found below (at 2x speed):
 
 4. Download pre-trained denoising weights (denoising_weights.zip) from the [releases page](https://drive.google.com/open?id=1Uysbfz_4cdl9BQAYHBUBw7wCs_zZ6SNA) into pointcnn-models/denoise. The file structure should be:
 	```bash
-	pointcnn-models/denoise/pretrained.data-00000-of-00001
-	pointcnn-models/denoise/pretrained.index
-	pointcnn-models/denoise/pretrained.meta
+	sane/pointcnn-models/denoise/pretrained.data-00000-of-00001
+	sane/pointcnn-models/denoise/pretrained.index
+	sane/pointcnn-models/denoise/pretrained.meta
    ```
  4. (Optional) Install and test PointCNN sampling module.
 	   ```bash
