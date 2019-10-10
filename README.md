@@ -48,7 +48,7 @@ A demonstration of SAnE can be found below (at 3x speed):
 
  - CUDA version mismatch
 
->   Try to install CUDA version 9.++ with cuDNN v7.05, SAnE uses tensorflow v1.7.0 which was compiled with that cuDNN v7.05.
+>   Try to install CUDA version 9.++ with cuDNN v7.05, SAnE uses tensorflow v1.7.0 which was compiled with cuDNN v7.05.
 
  - Failed to compile PointCNN sampling module
 
