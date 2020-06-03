@@ -7,7 +7,12 @@ Addressing the need for high-quality, time-efficient, and easy-to-use annotation
 
 A demonstration of SAnE can be found below (at 3x speed):
 
-![Alt Text](https://github.com/hasanari/smart-annotation/blob/master/sane-point-cloud.gif)
+![SAnE](https://github.com/hasanari/smart-annotation/blob/master/sane-point-cloud.gif)
+
+### Annotation Instruction
+
+[![annot instruction](https://img.youtube.com/vi/LYrcs-Ww3j4/0.jpg)](https://www.youtube.com/watch?v=LYrcs-Ww3j4)
+
 
 ## Installation
 1. Clone this repository
