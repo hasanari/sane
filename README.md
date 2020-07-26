@@ -10,15 +10,24 @@ A demonstration of SAnE can be found below (at 3x speed):
 ![SAnE](https://github.com/hasanari/smart-annotation/blob/master/sane-point-cloud.gif)
 
 For more details, please refer to our paper: https://ieeexplore.ieee.org/document/9143095. If you find this work useful for your research, please consider citing:
+
+H. A. Arief et al., "SAnE: Smart Annotation and Evaluation Tools for Point Cloud Data," in IEEE Access, vol. 8, pp. 131848-131858, 2020, doi: 10.1109/ACCESS.2020.3009914.
+
+
+
 ``` 
 @ARTICLE{9143095,
   author={H. A. {Arief} and M. {Arief} and G. {Zhang} and Z. {Liu} and M. {Bhat} and U. G. {Indahl} and H. {Tveite} and D. {Zhao}},
   journal={IEEE Access}, 
-  title={SAnE: Smart Annotation and Evaluation tools for point cloud data}, 
+  title={SAnE: Smart Annotation and Evaluation Tools for Point Cloud Data}, 
   year={2020},
   volume={8},
   number={},
-  pages={1-11}}
+  pages={131848-131858},
+  keywords={Three-dimensional displays;Tools;Noise reduction;Crowdsourcing;Two dimensional displays;Proposals;Robustness;Annotation tool;crowdsourcing annotation;frame tracking;point cloud data},
+  doi={10.1109/ACCESS.2020.3009914},
+  ISSN={2169-3536},
+  month={},}
    ```
    
 ## Installation
