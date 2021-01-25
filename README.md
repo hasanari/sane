@@ -1,20 +1,30 @@
 
 
-# _SAnE_: Smart annotation and evaluation tools for point cloud data
+# _SAnE_: Smart annotation and evaluation tools for point cloud data 
+[Paper Link](https://ieeexplore.ieee.org/document/9143095)
 
 ### Abstract
 Addressing the need for high-quality, time-efficient, and easy-to-use annotation tools, we propose SAnE, a semi-automatic annotation tool for labeling point cloud data. While most current methods rely on multi-sensor approaches to provide bounding box annotations, we focus on the potential of the point cloud data itself for providing high-quality labelling in an efficient way. The contributions of this paper are threefold: (1) we propose a denoising pointwise segmentation strategy enabling a fast implementation of one-click annotation, (2) we expand the motion model technique with our guided-tracking algorithm, easing the frame-to-frame annotation processes, and (3) we provide an interactive yet robust open-source point cloud annotation tool, targeting both skilled and crowdsourcing annotators to create high-quality bounding box annotations. Using the KITTI dataset, we show that the SAnE speeds up the annotation process by a factor of 4.44 while achieving Intersection over Union (IoU) agreements of 84.27%. Furthermore, in experiments using crowdsourcing services, the full-featured SAnE achieves an accuracy of 79.36% while reducing the annotation time by a factor of 3, a significant improvement compared to the baseline accuracy of 62.02%. This result shows the potential of AI-assisted annotation tools, such as SAnE, for providing fast and accurate annotation labels for large-scale datasets with a significantly reduced price.
 
 A demonstration of SAnE can be found below (at 3x speed):
 
-![SAnE](https://github.com/hasanari/smart-annotation/blob/master/sane-point-cloud.gif)
+![SAnE](https://github.com/hasanari/sane/blob/develop/sane-point-cloud_.gif)
 
 For more details, please refer to our paper: https://ieeexplore.ieee.org/document/9143095. If you find this work useful for your research, please consider citing:
 
 H. A. Arief et al., "SAnE: Smart Annotation and Evaluation Tools for Point Cloud Data," in IEEE Access, vol. 8, pp. 131848-131858, 2020, doi: 10.1109/ACCESS.2020.3009914.
 
+## Related repositories 
 
+These are some extensions of SANE including tools for speeding up annotation.
+ - * This repository implements the PointRCNN model for Full Pre-labeling of the annotations. [Link](https://github.com/ziliHarvey/smart-annotation-pointrcnn)
+   * Author: Zi Li, Kartik
 
+ - * This repository includes a One-click Shape-completion model for pointcloud, as an annotator utility and microservice. [Link](https://github.com/Manojbhat09/Sane-annotation-shape-complete)
+   * Author: Manoj
+
+## Cite
+If you find this work useful in your research, please consider cite:
 ``` 
 @ARTICLE{9143095,
   author={H. A. {Arief} and M. {Arief} and G. {Zhang} and Z. {Liu} and M. {Bhat} and U. G. {Indahl} and H. {Tveite} and D. {Zhao}},
