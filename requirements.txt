@@ -33,6 +33,6 @@ termcolor==1.1.0
 Werkzeug==0.15.3
 transforms3d==0.3.1
 tqdm==4.36.1
-tensorflow-gpu==2.5.0
+tensorflow-gpu==2.5.1
 tensorflow-plot==0.3.2
 plyfile==0.7
