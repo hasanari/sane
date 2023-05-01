@@ -3,7 +3,7 @@ astor==0.7.1
 Click==7.0
 cycler==0.10.0
 decorator==4.4.0
-Flask==1.0.2
+Flask==2.3.2
 gast==0.2.2
 grpcio==1.19.0
 h5py==2.9.0
